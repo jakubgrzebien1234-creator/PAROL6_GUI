@@ -11,16 +11,16 @@ import functools
 # === IMPORTY LOKALNYCH MODUŁÓW ===
 import robot.config as config
 from robot.kinematics import RobotKinematics
+# Użyj zaktualizowanego workera
 from robot.worker import RobotWorker
 try:
     # Importuj prawdziwy moduł comm, aby przekazać go do workera
     import robot.communication as comm 
 except ImportError:
     # Jeśli nie ma, worker użyje własnej atrapy
-    from robot.worker import comm # Importuj atrapę z workera
+    from robot.robot_worker import comm # Importuj atrapę z workera
 
-# =Aplikacja korzysta również z `config.py` i `kinematics.py`,
-# które wysłałem w poprzedniej wiadomości.
+# =Aplikacja korzysta również z `config.py` i `kinematics.py`
 # ======================================
 
 from scipy.spatial.transform import Rotation as R
@@ -62,6 +62,11 @@ class MainWindow(QtWidgets.QWidget):
     start_move_signal = pyqtSignal(np.ndarray)
     # Sygnał do ustawienia portu COM w wątku roboczym
     set_port_signal = pyqtSignal(str)
+    # Sygnał do uruchomienia Homing w wątku roboczym
+    request_homing_signal = pyqtSignal()
+    
+    # --- 1. NOWY SYGNAŁ DLA CHWYTAKA ---
+    request_gripper_signal = pyqtSignal(str)
 
     def __init__(self):
         super().__init__()
@@ -74,6 +79,13 @@ class MainWindow(QtWidgets.QWidget):
         # Pozycja startowa
         self.standby_angles = np.array([0] + [np.radians(a) for a in config.STANDBY_ANGLES_DEG])
         self.current_orientation = None # Zostanie ustawione w go_standby
+
+        # --- 2. NOWY STAN CHWYTAKA ---
+        self.gripper_state = False # False = VAC_OFF, True = VAC_ON
+
+        self.l6_color_state = 0 # 0 = domyślny, 1 = zmieniony
+        
+        self.default_link_colors = {} 
 
         # Inicjalizacja GUI
         self.init_gui()
@@ -91,6 +103,30 @@ class MainWindow(QtWidgets.QWidget):
         control_widget = QtWidgets.QWidget()
         control_widget.setFixedWidth(240)
         control_layout = QtWidgets.QVBoxLayout(control_widget)
+
+        # --- 3. SEKCJA PRZYCISKÓW GÓRNYCH (HOME + GRIPPER) ---
+        self.home_button = QtWidgets.QPushButton("HOME")
+        self.home_button.setFixedSize(60, 60) # Kwadratowy
+        self.home_button.setStyleSheet(
+            "font-weight: bold; background-color: #f7e1e1; border: 1px solid #c00;"
+        )
+        
+        # --- NOWY PRZYCISK CHWYTAKA ---
+        self.gripper_button = QtWidgets.QPushButton("VACCUM\nGRIPPER")
+        self.gripper_button.setFixedSize(60, 60) # Taki sam rozmiar
+        # Domyślny styl (wyłączony)
+        self.gripper_button.setStyleSheet(
+            "font-weight: bold; background-color: #f0f0f0; border: 1px solid #999;"
+        )
+        
+        top_button_layout = QtWidgets.QHBoxLayout()
+        top_button_layout.addStretch() # Popychacz
+        # --- DODANE OBA PRZYCISKI ---
+        top_button_layout.addWidget(self.gripper_button) # Najpierw gripper
+        top_button_layout.addWidget(self.home_button)     # Potem home
+        
+        control_layout.addLayout(top_button_layout)
+        # --- KONIEC SEKCJI GÓRNYCH PRZYCISKÓW ---
 
         # === UART ===
         uart_group = QtWidgets.QGroupBox("Komunikacja UART")
@@ -111,7 +147,7 @@ class MainWindow(QtWidgets.QWidget):
         control_layout.addWidget(uart_group)
 
         # === XYZ ===
-        xyz_group = QtWidgets.QGroupBox("Cel efektora (mm) [Model Użytkownika]")
+        xyz_group = QtWidgets.QGroupBox("Cel efektora (mm)")
         xyz_layout = QtWidgets.QGridLayout()
         self.xyz_inputs = {}
         for i, label in enumerate(['X', 'Y', 'Z']):
@@ -136,11 +172,7 @@ class MainWindow(QtWidgets.QWidget):
         for i, label in enumerate(['Roll', 'Pitch', 'Yaw']):
             lbl = QtWidgets.QLabel(f"{label}:")
             inp = QtWidgets.QLineEdit()
-            # === POPRAWKA BŁĘDU ===
-            # Poprzednio: QtGui.QDoubleValidator(config.RANGES_RPY, config.RANGES_RPY, 2)
-            # Poprawnie: Rozpakuj krotkę na dwa argumenty
             validator = QtGui.QDoubleValidator(config.RANGES_RPY[0], config.RANGES_RPY[1], 2)
-            # =======================
             inp.setValidator(validator)
             inp.setText("0.0")
             rpy_layout.addWidget(lbl, i, 0)
@@ -178,6 +210,10 @@ class MainWindow(QtWidgets.QWidget):
         btn_layout.addWidget(self.standby_btn)
         self.reset_view_btn = QtWidgets.QPushButton("Reset kamery")
         btn_layout.addWidget(self.reset_view_btn)
+        
+        self.color_change_btn = QtWidgets.QPushButton("Zmień kolor L6")
+        btn_layout.addWidget(self.color_change_btn)
+        
         control_layout.addLayout(btn_layout)
         control_layout.addStretch()
         main_layout.addWidget(control_widget)
@@ -196,13 +232,11 @@ class MainWindow(QtWidgets.QWidget):
 
         # === WCZYTANIE SIATEK 3D ===
         self.links_3d = [] 
-        for stl_file in config.STL_FILES:
+        for i, stl_file in enumerate(config.STL_FILES):
             try:
                 mesh_data = trimesh.load(f'assets/{stl_file}')
                 mesh_data.process()
-                # === DODATKOWA POPRAWKA na RuntimeWarning ===
                 mesh_data.fill_holes() 
-                # ==========================================
                 mesh_data.fix_normals()
                 
                 if hasattr(mesh_data.visual, "vertex_colors") and mesh_data.visual.vertex_colors is not None:
@@ -221,10 +255,14 @@ class MainWindow(QtWidgets.QWidget):
             except Exception as e:
                 print(f"Krytyczny błąd wczytywania siatki '{stl_file}': {e}. Używam placeholdera.")
                 mesh_item = gl.GLMeshItem(vertexes=np.array([[0,0,0]]))
+                vc = np.array([[0.8, 0.8, 0.8]]) 
+            
+            self.default_link_colors[i] = vc 
             
             self.view.addItem(mesh_item)
             self.links_3d.append(mesh_item)
         print(f"Załadowano {len(self.links_3d)} siatek.")
+
 
         # === PODPIĘCIA SYGNAŁÓW ===
         self.set_xyz_btn.clicked.connect(self.schedule_update)
@@ -242,6 +280,15 @@ class MainWindow(QtWidgets.QWidget):
 
         self.standby_btn.clicked.connect(self.go_standby)
         self.reset_view_btn.clicked.connect(self.reset_camera)
+        
+        self.color_change_btn.clicked.connect(self.change_link_color)
+
+        # --- NOWE PODPIĘCIE PRZYCISKU HOME ---
+        self.home_button.clicked.connect(self.request_homing_signal.emit)
+        
+        # --- 3. (Część 2) NOWE PODPIĘCIE PRZYCISKU GRIPPER ---
+        self.gripper_button.clicked.connect(self.on_gripper_click)
+        # --- KONIEC ---
 
         # Harmonogram (debounce)
         self.update_pending = False
@@ -257,12 +304,23 @@ class MainWindow(QtWidgets.QWidget):
         self.worker.angles_updated.connect(self.apply_transforms_from_angles)
         # Gdy worker zmieni status, GUI zaktualizuje etykietę
         self.worker.status_updated.connect(self.update_status_label)
+        
+        # Gdy worker wykryje krańcówkę, GUI zmieni kolor
+        self.worker.limit_switch_status.connect(self.on_limit_switch_hit)
 
         # === Podłącz sygnały Z GUI DO workera ===
         # Do uruchamiania ruchu
         self.start_move_signal.connect(self.worker.start_move)
         # Do ustawiania portu COM
         self.set_port_signal.connect(self.worker.set_com_port)
+        
+        # --- NOWE PODPIĘCIE DLA HOME ---
+        self.request_homing_signal.connect(self.worker.start_homing)
+        
+        # --- 4. NOWE PODPIĘCIE DLA CHWYTAKA ---
+        # Zakładamy, że worker ma slot o nazwie set_gripper_state
+        self.request_gripper_signal.connect(self.worker.set_gripper_state)
+        # --- KONIEC ---
         
         # Gdy GUI zmieni port, wyślij sygnał do workera
         self.port_combo.currentTextChanged.connect(self.set_port_signal.emit)
@@ -313,7 +371,7 @@ class MainWindow(QtWidgets.QWidget):
         transforms = self.kinematics.forward_kinematics_full(angles)
         
         if len(transforms) < len(config.LINK_NAMES):
-             return
+            return
 
         for i, name in enumerate(config.LINK_NAMES):
             mesh = self.links_3d[i]
@@ -521,6 +579,134 @@ class MainWindow(QtWidgets.QWidget):
     def reset_camera(self):
         self.view.setCameraPosition(distance=0.7, elevation=30, azimuth=25)
 
+    # --- 5. NOWA METODA OBSŁUGI CHWYTAKA ---
+    @pyqtSlot()
+    def on_gripper_click(self):
+        """
+        Przełącza stan chwytaka (VAC_ON / VAC_OFF) i wysyła sygnał do workera.
+        """
+        # 1. Odwróć stan
+        self.gripper_state = not self.gripper_state
+        
+        if self.gripper_state:
+            # Stan: WŁĄCZONY
+            command = "VAC_ON"
+            # Zmień wygląd przycisku na "aktywny" (np. zielony)
+            self.gripper_button.setStyleSheet(
+                "font-weight: bold; background-color: #e1f7e1; border: 1px solid #0c0;"
+            )
+        else:
+            # Stan: WYŁĄCZONY
+            command = "VAC_OFF"
+            # Przywróć wygląd domyślny (szary)
+            self.gripper_button.setStyleSheet(
+                "font-weight: bold; background-color: #f0f0f0; border: 1px solid #999;"
+            )
+            
+        # 3. Wyślij sygnał do wątku roboczego
+        print(f"Wysyłanie polecenia chwytaka: {command}")
+        self.request_gripper_signal.emit(command)
+    # --- KONIEC NOWEJ METODY ---
+
+    def set_link_color(self, link_index_3d, color_rgb):
+        """
+        Ustawia kolor dla konkretnej siatki (link_index_3d) na dany kolor [R,G,B].
+        """
+        try:
+            target_mesh = self.links_3d[link_index_3d]
+        except IndexError:
+            print(f"Błąd: Siatka o indeksie {link_index_3d} nie istnieje.")
+            return
+
+        try:
+            current_vertexes = target_mesh.vertexes
+            current_faces = target_mesh.faces
+            
+            if current_vertexes is None or current_faces is None:
+                print("Błąd: Brak danych wierzchołków lub ścian w obiekcie.")
+                return
+            num_verts = current_vertexes.shape[0]
+        except Exception as e:
+            print(f"Błąd odczytu wierzchołków: {e}")
+            return
+            
+        if isinstance(color_rgb, list):
+            new_color_array = np.tile(color_rgb, (num_verts, 1)).astype(np.float32)
+        elif isinstance(color_rgb, np.ndarray):
+            new_color_array = color_rgb
+            if new_color_array.shape[0] != num_verts:
+                print(f"Uwaga: Niezgodność liczby kolorów ({new_color_array.shape[0]}) i wierzchołków ({num_verts}). Używam pierwszego koloru.")
+                new_color = new_color_array[0, :3]
+                new_color_array = np.tile(new_color, (num_verts, 1)).astype(np.float32)
+        else:
+            print("Błąd: Nieprawidłowy format koloru.")
+            return
+
+        target_mesh.setMeshData(
+            vertexes=current_vertexes,
+            faces=current_faces,
+            vertexColors=new_color_array
+        )
+
+    @pyqtSlot(int, bool)
+    def on_limit_switch_hit(self, joint_index, is_hit):
+        """
+        Slot wywoływany, gdy worker wykryje zmianę stanu krańcówki.
+        joint_index: 0-5 (dla L1-L6)
+        is_hit: True (wciśnięta), False (zwolniona)
+        """
+        
+        # Mapujemy indeks stawu (0-5) na indeks siatki 3D (1-6)
+        # (Zakładając, że self.links_3d[0] to baza "L0_Base")
+        link_index_3d = joint_index + 1
+        
+        if link_index_3d >= len(self.links_3d):
+             print(f"Ignorowanie krańcówki: brak siatki dla indeksu {link_index_3d}")
+             return
+
+        if is_hit:
+            # Ustaw kolor na ZIELONY
+            print(f"Krańcówka L{joint_index+1} WCIŚNIĘTA. Zmieniam kolor na zielony.")
+            self.set_link_color(link_index_3d, [0.1, 0.9, 0.1]) # Jasny zielony
+        else:
+            # Przywróć kolor domyślny
+            print(f"Krańcówka L{joint_index+1} ZWOLNIONA. Przywracam kolor.")
+            default_color_data = self.default_link_colors.get(link_index_3d)
+            if default_color_data is not None:
+                self.set_link_color(link_index_3d, default_color_data)
+            else:
+                # Fallback, gdyby coś poszło nie tak
+                self.set_link_color(link_index_3d, [0.8, 0.8, 0.8])
+
+    @pyqtSlot()
+    def change_link_color(self):
+        """
+        Zmienia kolor siatki ostatniego ogniwa (L6) po naciśnięciu przycisku.
+        (Używa teraz nowej, ogólnej funkcji)
+        """
+        link_to_change = 6 # L6_Link (indeks siatki 6)
+        
+        if link_to_change >= len(self.links_3d):
+            print("Błąd: Brak siatki L6 (indeks 6).")
+            return
+            
+        if self.l6_color_state == 0:
+            # Zmień na czerwony
+            new_color = [1.0, 0.3, 0.3] 
+            self.l6_color_state = 1
+        else:
+            # Przywróć domyślny (lub szary jako fallback)
+            default_color_data = self.default_link_colors.get(link_to_change)
+            if default_color_data is None:
+                print("Ostrzeżenie: Brak domyślnego koloru dla L6, używam szarego.")
+                default_color_data = [0.8, 0.8, 0.8]
+                
+            new_color = default_color_data
+            self.l6_color_state = 0
+            
+        self.set_link_color(link_to_change, new_color)
+        print(f"Zmieniono kolor L6 na stan: {self.l6_color_state}")
+
 # ------------------------
 # Uruchomienie Aplikacji
 # ------------------------
@@ -529,4 +715,3 @@ if __name__ == "__main__":
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())
-

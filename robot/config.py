@@ -4,14 +4,13 @@ import numpy as np
 URDF_PATH = 'assets/PAROL6.urdf'
 STL_FILES = [
     'base_link_p.ply', 'L1_p.ply', 'L2_p.ply', 'L3_p.ply', 
-    'L4_p.ply', 'L5_p.ply', 'Stepper_Gripper_p.ply'
+    'L4_p.ply', 'L5_p.ply', 'VacGrip_p.ply'
 ]
 LINK_NAMES = [
     'base_link', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6'
 ]
 
 # --- Ustawienia Kinematyki ---
-# Maska: False dla stałej bazy, True dla 6 ruchomych osi
 ACTIVE_LINKS_MASK = [False, True, True, True, True, True, True]
 # Macierz transformacji do sceny 3D (flip Y)
 S_MATRIX = np.diag([1.0, -1.0, 1.0, 1.0])
@@ -19,7 +18,7 @@ S_MATRIX = np.diag([1.0, -1.0, 1.0, 1.0])
 STANDBY_ANGLES_DEG = [0, 0, 0, 0, 0, 0]
 
 # --- Ustawienia Animacji ---
-ANIM_STEPS_TOTAL = 15
+ANIM_STEPS_TOTAL = 100
 ANIM_INTERVAL_MS = 30
 DEBOUNCE_MS = 20
 

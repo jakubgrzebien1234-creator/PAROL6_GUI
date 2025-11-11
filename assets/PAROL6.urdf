@@ -347,7 +347,7 @@
     name="L6">
     <inertial>
       <origin
-        xyz="0.00632955087228015 -0.000453856352095022 -0.0554441567386594"
+        xyz="0.074 -0.000453856352095022 -0.102"
         rpy="0 0 0" />
       <mass
         value="0.0703261410665101" />
@@ -365,7 +365,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://parol6/meshes/L6.STL" />
+          filename="package://PAROL6_GUI/assets/VacGrip.STL" />
       </geometry>
       <material
         name="">
@@ -375,32 +375,22 @@
     </visual>
     <collision>
       <origin
-        xyz="0 0 0"
+        xyz="0.074 -0.000453856352095022 -0.102"
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://parol6/meshes/L6.STL" />
+          filename="package://PAROL6_GUI/assets/VacGrip.STL" />
       </geometry>
     </collision>
   </link>
-  <joint
-    name="L6"
-    type="revolute">
-    <origin
-      xyz="0 0 0"
-      rpy="1.5708 0 0" />
-    <parent
-      link="L5" />
-    <child
-      link="L6" />
-    <axis
-      xyz="0 0 -1" />
-    <limit
-      lower="-3.1"
-      upper="3.1"
-      effort="300"
-      velocity="3" />
-  </joint>
+
+<joint name="L6" type="revolute">
+  <origin xyz="0 0 0" rpy="1.5708 0 0" />
+  <parent link="L5" />
+  <child link="L6" />
+  <axis xyz="0 0 -1" />
+  <limit lower="-3.1" upper="3.1" effort="300" velocity="3" />
+</joint>
 
   <transmission name="TRANS_L1"> 
     <type>transmission_interface/SimpleTransmission</type> 

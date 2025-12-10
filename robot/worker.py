@@ -33,6 +33,10 @@ except ImportError:
 # === USTAWIENIA GŁÓWNEJ PĘTLI ===
 MAIN_LOOP_TIMER_MS = 20 
 
+# <--- ZMIANA: PRĘDKOŚĆ RUCHU LINIOWEGO (m/s)
+# 0.05 = 5 cm/s (wolno), 0.2 = 20 cm/s (szybko)
+LINEAR_SPEED_M_S = 0.2  
+
 class RobotWorker(QObject):
     # Sygnały do GUI
     angles_updated = pyqtSignal(np.ndarray)
@@ -131,11 +135,9 @@ class RobotWorker(QObject):
                         raw_counts = [int(match.group(i)) for i in range(1, 7)]
                         angles_rad = self._convert_raw_to_angles(raw_counts)
                         
-                    
                         self.previous_angles = angles_rad
                         self.angles_updated.emit(angles_rad)
                         
-
                     except Exception as e:
                         print(f"Błąd parsowania ramki POS: {e} (Linia: {line})")
 
@@ -261,7 +263,10 @@ class RobotWorker(QObject):
         try:
             dt_s = MAIN_LOOP_TIMER_MS / 1000.0 
             dist = np.linalg.norm(end_pose_matrix[:3, 3] - start_pose_matrix[:3, 3])
-            travel_time_s = dist / 0.05 
+            
+            # <--- ZMIANA: PRĘDKOŚĆ USTAWIANA PRZEZ STAŁĄ
+            travel_time_s = dist / LINEAR_SPEED_M_S 
+            
             num_points = int(travel_time_s / dt_s)
             if num_points < 10: 
                 num_points = 10
@@ -349,6 +354,13 @@ class RobotWorker(QObject):
                 elif line == "VACOFF":
                     self.program_queue.append(('VACOFF', ()))
                     self.program_line_map.append(line_num)
+                # <--- ZMIANA: PARSOWANIE NOWYCH KOMEND VGRIP
+                elif line == "VGRIPON":
+                    self.program_queue.append(('VGRIPON', ()))
+                    self.program_line_map.append(line_num)
+                elif line == "VGRIPOFF":
+                    self.program_queue.append(('VGRIPOFF', ()))
+                    self.program_line_map.append(line_num)
                 else:
                     raise ValueError(f"Nieznana komenda: {original_line}")
             except Exception as e:
@@ -424,6 +436,17 @@ class RobotWorker(QObject):
                 self.set_gripper_state("VAC_OFF")
                 self.program_line_index += 1
                 QTimer.singleShot(0, self._execute_next_program_step)
+            
+            # <--- ZMIANA: WYKONANIE NOWYCH KOMEND VGRIP
+            elif command == 'VGRIPON':
+                self.set_gripper_state("VGripON")
+                self.program_line_index += 1
+                QTimer.singleShot(0, self._execute_next_program_step)
+            elif command == 'VGRIPOFF':
+                self.set_gripper_state("VGripOFF")
+                self.program_line_index += 1
+                QTimer.singleShot(0, self._execute_next_program_step)
+                
             else:
                 raise ValueError(f"Nieznane polecenie: {command}")
         except Exception as e:
@@ -469,7 +492,10 @@ class RobotWorker(QObject):
         try:
             dt_s = MAIN_LOOP_TIMER_MS / 1000.0
             dist = np.linalg.norm(end_tf[:3, 3] - start_tf[:3, 3])
-            travel_time_s = dist / 0.05
+            
+            # <--- ZMIANA: PRĘDKOŚĆ USTAWIANA PRZEZ STAŁĄ
+            travel_time_s = dist / LINEAR_SPEED_M_S 
+            
             num_points = int(travel_time_s / dt_s)
             if num_points < 2: 
                 num_points = 2
@@ -534,7 +560,7 @@ class RobotWorker(QObject):
 
     def _convert_user_coords_to_robot(self, X_user_mm, Y_user_mm, Z_user_mm):
         OFFSET_X = 0.0 
-        OFFSET_Y = -90.0
+        OFFSET_Y = 0
         OFFSET_Z = 100.0 
         X_user_mm += OFFSET_X
         Y_user_mm += OFFSET_Y
@@ -546,7 +572,7 @@ class RobotWorker(QObject):
 
     def _robot_coords_to_user(self, robot_pos_m):
         OFFSET_X = 0.0 
-        OFFSET_Y = -90.0
+        OFFSET_Y = 0
         OFFSET_Z = 100.0 
         X_robot_m, Y_robot_m, Z_robot_m = robot_pos_m
         X_user_mm_raw = -Y_robot_m * 1000.0

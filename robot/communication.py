@@ -1,7 +1,7 @@
 import serial
 import numpy as np
 import time
-
+import serial.tools.list_ports
 DEFAULT_BAUD_RATE = 115200 
 DEFAULT_TIMEOUT = 0.01 
 # === NOWOŚĆ: Mała pauza między wysłaniem J1, J2, J3... ===
@@ -12,6 +12,7 @@ _serial_instance = None
 
 def open_serial_port(port_name: str, baud_rate: int = DEFAULT_BAUD_RATE, timeout: float = DEFAULT_TIMEOUT):
     global _serial_instance
+
     
     if _serial_instance is not None and _serial_instance.is_open:
         if _serial_instance.port == port_name:
@@ -98,7 +99,7 @@ def send_angles(port_name: str, angles_rad: np.ndarray):
             angle_val = angles_to_send[i]
             
             send_single_angle_on_open_port(ser, joint_num, angle_val)
-            print(f'Wysłano kąt J{joint_num}: {angle_val:.2f}°') # Debug
+            #print(f'Wysłano kąt J{joint_num}: {angle_val:.2f}°') # Debug
             # 4. Krytyczna pauza, aby STM32 nadążył
             time.sleep(JOINT_SEND_DELAY) 
 
@@ -153,7 +154,7 @@ def send_command(port_name: str, command: str):
         ser = open_serial_port(port_name)
         if ser and ser.is_open:
             command_to_send = f"{command}\r\n"
-            print(f"→ {command_to_send.strip()}") # Debug
+            #print(f"→ {command_to_send.strip()}") # Debug
             ser.write(command_to_send.encode('ascii'))
         else:
             raise serial.SerialException("Nie udało się otworzyć portu szeregowego.")

@@ -567,7 +567,7 @@ class MainWindow(QtWidgets.QWidget):
             return
             
         for i in range(6):
-            deg = np.degrees(angles_rad[i+1])  # pomijamy bazę 0
+            deg = np.degrees(angles_rad[i])  # pomijamy bazę 0
             self.joint_value_labels[i].setText(f"{deg:.1f}°")
 
 
@@ -890,4 +890,3 @@ class MainWindow(QtWidgets.QWidget):
         self.program_editor.setExtraSelections(selections)
         if line_number >= 0:
             self.program_editor.setTextCursor(cursor) # Przesuń widok
-

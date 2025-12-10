@@ -1,10 +1,6 @@
-# Plik: main.py
-# (lub jakkolwiek nazywa się Twój główny plik startowy)
 
 import sys
 from PyQt5 import QtWidgets
-
-# Importuj klasę MainWindow z nowego modułu GUI
 from robot.gui import MainWindow
 
 # ------------------------
@@ -12,8 +8,11 @@ from robot.gui import MainWindow
 # ------------------------
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    
     # Ustaw styl, aby poprawić wygląd na różnych systemach
+
+
+
+
     try:
         app.setStyle("Fusion")
     except Exception as e:

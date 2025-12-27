@@ -1,259 +1,223 @@
 import numpy as np
+import warnings
 from ikpy.chain import Chain
 import xml.etree.ElementTree as ET
 from scipy.spatial.transform import Rotation as R
+from scipy.spatial.transform import Slerp
+
+# === TOOL DICTIONARY ===
+ROBOT_TOOLS = {
+    "CHWYTAK_MALY": {
+        # PROSTY CHWYTAK (W OSI):
+        # X = 0 (Brak przesunięcia w bok)
+        # Y = 0 (Brak przesunięcia w bok)
+        # Z = Długość całkowita (np. 30mm bazy + 70mm końcówki = 10cm = 0.10)
+        
+        # Wpisz tutaj CAŁKOWITĄ długość od tarczy robota do czubka chwytaka:
+        "translation": [0.0, 0.0, 0.10],  
+        
+        "orientation": [0.0, 0.0, 0.0]
+    },
+    
+    "CHWYTAK_DUZY": {
+        "translation": [0.0, 0.0, 0.15],   
+        "orientation": [0.0, 0.0, 0.0]
+    }
+}
 
 class RobotKinematics:
     def __init__(self, urdf_path, active_links_mask=None):
         self.chain = None
         self.urdf_path = urdf_path
+        self.n_active_joints = 6
+        self.visual_origins = {}
+        self.joint_limits_rad = [(-np.pi, np.pi)] * 6
         
+        self.tool_translation = np.zeros(3) 
+        self.tool_rotation_matrix = np.eye(3) 
+        self.current_tool = "NONE"
+
         try:
-            # 1. Wczytujemy łańcuch
-            self.chain = Chain.from_urdf_file(
-                urdf_path,
-                active_links_mask=active_links_mask
-            )
+            print(f"[IK] Loading URDF: {urdf_path}")
             
-            # 2. Parametry solvera
-            self.chain.max_iterations = 100
-            self.chain.convergence_limit = 1e-4
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                self.chain = Chain.from_urdf_file(urdf_path)
             
-            # -------------------------------------------------------------------------
-            # AUTOKOREKTA MASKI (NAPRAWA BŁĘDU (6,) vs (7,))
-            # -------------------------------------------------------------------------
-            # Sprawdzamy, ile linków IKPy uważa za "aktywne"
-            detected_active = [x for x in self.chain.active_links_mask if x]
+            # Automatyczna maska
+            mask = []
+            for link in self.chain.links:
+                if link.joint_type == 'fixed':
+                    mask.append(False)
+                else:
+                    mask.append(True)
             
-            # Jeśli mamy 7 lub więcej aktywnych stawów, a to robot 6-osiowy,
-            # to zazwyczaj ostatni link (narzędzie) został błędnie uznany za silnik.
-            if len(detected_active) > 6:
-                print(f"UWAGA: Wykryto {len(detected_active)} aktywnych stawów. Wymuszam tryb 6-osiowy.")
-                
-                # Tworzymy nową maskę:
-                # Zazwyczaj struktura to: [Base(F), J1(T), J2(T), J3(T), J4(T), J5(T), J6(T), Tool(F/T?)]
-                # Znajdujemy indeksy True i wyłączamy wszystko powyżej 6-tego silnika.
-                
-                new_mask = list(self.chain.active_links_mask)
-                active_count = 0
-                for i in range(len(new_mask)):
-                    if new_mask[i]:
-                        active_count += 1
-                        if active_count > 6:
-                            new_mask[i] = False # Wyłącz nadmiarowe osie (np. gripper)
-                
-                self.chain.active_links_mask = new_mask
+            self.chain.active_links_mask = mask
+            self.active_links_mask = mask
             
-            # -------------------------------------------------------------------------
-
-            print(f"URDF wczytany. Linki ogółem: {len(self.chain.links)}")
+            # === ZWIĘKSZONA PRECYZJA ===
+            self.chain.max_iterations = 500  # Było 100
+            self.chain.convergence_limit = 1e-6
             
-            # Aktualizacja indeksów po ewentualnej korekcie
-            self.active_joints_indices = [i for i, x in enumerate(self.chain.active_links_mask) if x]
-            self.n_active_joints = len(self.active_joints_indices)
-            
-            print(f"Liczba aktywnych napędów (po korekcie): {self.n_active_joints}")
-            print(f"Maska aktywności: {self.chain.active_links_mask}")
-
-            if self.n_active_joints != 6:
-                print("OSTRZEŻENIE: Liczba osi jest inna niż 6! Może to powodować błędy w GUI.")
-
             self.joint_limits_rad = self._load_active_joint_limits()
             self.visual_origins = self._load_visual_origins(urdf_path)
+            
+            self.set_tool("CHWYTAK_MALY")
+            
+            print(f"[IK] Ready. Mask: {mask}")
 
         except Exception as e:
-            print(f"Krytyczny błąd wczytywania URDF: {e}. Przełączam na tryb ATRAPY (Mock).")
-            import traceback
-            traceback.print_exc()
+            print(f"[IK ERROR] {e}")
             self._setup_mock_chain()
 
-    def _setup_mock_chain(self):
-        """Konfiguracja atrapy."""
-        class MockLink:
-            name = "mock"
-            bounds = (-np.pi, np.pi)
+    def set_tool(self, tool_name):
+        if tool_name not in ROBOT_TOOLS:
+            print(f"[IK] Unknown tool: {tool_name}")
+            return
+
+        tool_data = ROBOT_TOOLS[tool_name]
+        self.tool_translation = np.array(tool_data["translation"])
+        rpy = tool_data.get("orientation", [0,0,0])
+        self.tool_rotation_matrix = R.from_euler('xyz', rpy).as_matrix()
         
-        class MockChain:
-            def __init__(self):
-                self.links = [MockLink() for _ in range(8)]
-                # Standardowa maska dla 6 osi: Base=False, 1-6=True, Tool=False
-                self.active_links_mask = [False, True, True, True, True, True, True, False]
+        self.current_tool = tool_name
+        print(f"[IK] Tool Set: {tool_name} -> Offset: {self.tool_translation}")
 
-            def forward_kinematics(self, full_joints, full_kinematics=False):
-                identity = np.eye(4)
-                if full_kinematics: return [identity] * len(self.links)
-                return identity
-
-            def inverse_kinematics(self, target_position, target_orientation=None, orientation_mode=None, initial_position=None):
-                return np.zeros(len(self.links))
-
-        self.chain = MockChain()
-        self.active_links_mask = self.chain.active_links_mask
-        self.active_joints_indices = [1, 2, 3, 4, 5, 6]
-        self.n_active_joints = 6
-        self.joint_limits_rad = [(-3.14, 3.14)] * 6
-        self.visual_origins = {}
-
-    def _load_active_joint_limits(self):
-        limits = []
-        for i, link in enumerate(self.chain.links):
-            if self.chain.active_links_mask[i]:
-                bounds = getattr(link, 'bounds', (-np.pi, np.pi))
-                if bounds is None: bounds = (-np.pi, np.pi)
-                limits.append(bounds)
-        return limits
-
-    def _load_visual_origins(self, urdf_path):
-        origins = {}
-        try:
-            tree = ET.parse(urdf_path)
-            root = tree.getroot()
-            for link in root.findall('link'):
-                name = link.attrib.get('name')
-                visual = link.find('visual')
-                if visual is not None:
-                    origin = visual.find('origin')
-                    if origin is not None:
-                        xyz = [float(x) for x in origin.attrib.get('xyz', '0 0 0').split()]
-                        rpy = [float(r) for r in origin.attrib.get('rpy', '0 0 0').split()]
-                        origins[name] = (xyz, rpy)
-        except Exception:
-            pass
-        return origins
-
-    # ================= GETTERY =================
-    
-    def get_visual_origins(self):
-        return self.visual_origins
-
-    def get_joint_limits(self):
-        return self.joint_limits_rad
-
-    # ================= KONWERSJE (Z ZABEZPIECZENIAMI) =================
-    
-    def _active_to_full(self, active_joints):
-        # Jeśli wejście ma 6 elementów, a maska oczekuje np. 7, musimy to obsłużyć.
-        # Ale tutaj mamy już n_active_joints skorygowane w __init__.
-        
-        # Konwersja na array, żeby uniknąć błędów listy
-        active_arr = np.array(active_joints, dtype=float)
-
-        if len(active_arr) != self.n_active_joints:
-            # Próba ratunku, jeśli worker wysłał 6, a my jednak mamy 7 (lub odwrotnie)
-            if len(active_arr) > self.n_active_joints:
-                active_arr = active_arr[:self.n_active_joints]
-            elif len(active_arr) < self.n_active_joints:
-                # Dopełnij zerami
-                padding = np.zeros(self.n_active_joints - len(active_arr))
-                active_arr = np.concatenate((active_arr, padding))
-
-        full_vector = np.zeros(len(self.chain.links))
-        np.place(full_vector, self.chain.active_links_mask, active_arr)
-        return full_vector
-
-    def _full_to_active(self, full_vector):
-        """Wybiera z pełnego wektora tylko aktywne stawy."""
-        active = np.compress(self.chain.active_links_mask, full_vector)
-        
-        # Zabezpieczenie: jeśli z jakiegoś powodu active ma 7 elementów, a my chcemy 6
-        if len(active) > self.n_active_joints:
-            active = active[:self.n_active_joints]
-            
-        return active
-
-    # ================= KINEMATYKA =================
+    # ================= KINEMATYKA (DEBUGOWANA) =================
 
     def forward_kinematics(self, active_angles):
         full_joints = self._active_to_full(active_angles)
-        return self.chain.forward_kinematics(full_joints)
+        flange_matrix = self.chain.forward_kinematics(full_joints)
+        
+        R_flange = flange_matrix[:3, :3]
+        P_flange = flange_matrix[:3, 3]
+        
+        # P_tcp = P_flange + (R_flange * Offset)
+        offset_global = R_flange @ self.tool_translation
+        P_tcp = P_flange + offset_global
+        
+        tcp_matrix = np.eye(4)
+        tcp_matrix[:3, 3] = P_tcp
+        tcp_matrix[:3, :3] = R_flange @ self.tool_rotation_matrix
+        
+        return tcp_matrix
+
+    def inverse_kinematics(self, target_position, target_orientation, initial_guess=None):
+        if initial_guess is None: initial_guess = np.zeros(6)
+        
+        # 1. Obliczamy orientację flanszy
+        target_rot_matrix = target_orientation 
+        flange_rot_matrix = target_rot_matrix @ np.linalg.inv(self.tool_rotation_matrix)
+        
+        # 2. Obliczamy pozycję flanszy (Cofamy się o wektor narzędzia)
+        # WAŻNE: Wektor narzędzia jest obracany zgodnie z DOCELOWĄ rotacją flanszy
+        offset_global = flange_rot_matrix @ self.tool_translation
+        target_pos_flange = target_position - offset_global
+        
+        # === DEBUGGING (Wypisuje w konsoli przy każdym ruchu) ===
+        # Odkomentuj jeśli chcesz widzieć obliczenia
+        # print(f"DEBUG IK: TCP Target={target_position}")
+        # print(f"DEBUG IK: Offset Global={offset_global}")
+        # print(f"DEBUG IK: Flange Target={target_pos_flange}")
+        
+        full_guess = self._active_to_full(initial_guess)
+        
+        # 3. Solver IKPy
+        full_sol = self.chain.inverse_kinematics(
+            target_position=target_pos_flange,
+            target_orientation=flange_rot_matrix, 
+            orientation_mode='all', 
+            initial_position=full_guess
+        )
+        
+        return self._full_to_active(full_sol)
 
     def forward_kinematics_full(self, active_angles):
         full_joints = self._active_to_full(active_angles)
         return self.chain.forward_kinematics(full_joints, full_kinematics=True)
 
-    def inverse_kinematics(self, target_pos, target_orient_3x3, initial_active_joints=None):
-        if initial_active_joints is not None:
-            initial_full = self._active_to_full(initial_active_joints)
-        else:
-            initial_full = np.zeros(len(self.chain.links))
+    # ================= HELPERS =================
 
-        full_solution = self.chain.inverse_kinematics(
-            target_position=target_pos,
-            target_orientation=target_orient_3x3,
-            orientation_mode='all', 
-            initial_position=initial_full
-        )
+    def _active_to_full(self, active_joints):
+        arr = np.array(active_joints, dtype=float).flatten()
+        if len(arr) == 7: arr = arr[1:] 
+        if len(arr) != 6: arr = np.resize(arr, 6)
+        full = np.zeros(len(self.chain.links))
+        curr = 0
+        for i, act in enumerate(self.active_links_mask):
+            if act and curr < 6:
+                full[i] = arr[curr]
+                curr += 1
+        return full
 
-        return self._full_to_active(full_solution)
+    def _full_to_active(self, full_vector):
+        if self.active_links_mask: return np.compress(self.active_links_mask, full_vector)
+        return np.zeros(6)
 
-    def continuous_ik(self, target_pos, target_orient_3x3, prev_active_angles):
-        # Upewniamy się, że prev_active_angles ma dobry wymiar
-        prev_active_angles = np.array(prev_active_angles)
-        if len(prev_active_angles) != self.n_active_joints:
-             # Szybka naprawa wymiaru wejściowego
-             if len(prev_active_angles) > self.n_active_joints:
-                 prev_active_angles = prev_active_angles[:self.n_active_joints]
-             else:
-                 pad = np.zeros(self.n_active_joints - len(prev_active_angles))
-                 prev_active_angles = np.concatenate((prev_active_angles, pad))
+    def generate_linear_tcp_trajectory(self, start_tf, end_tf, n_points):
+        start_pos = start_tf[:3, 3]; end_pos = end_tf[:3, 3]
+        t = np.linspace(0, 1, int(n_points))
+        smooth_t = (1 - np.cos(t * np.pi)) / 2 
+        traj_pos = start_pos + (end_pos - start_pos) * smooth_t[:, np.newaxis]
+        
+        rot_start = R.from_matrix(start_tf[:3, :3])
+        rot_end = R.from_matrix(end_tf[:3, :3])
+        slerp = Slerp([0, 1], R.from_matrix([start_tf[:3, :3], end_tf[:3, :3]]))
+        traj_rot = slerp(smooth_t).as_matrix()
+        
+        return traj_pos, traj_rot
 
-        sol_active_A = self.inverse_kinematics(target_pos, target_orient_3x3, prev_active_angles)
+    def generate_linear_tcp_trajectory_points(self, start_tf, end_tf, n_points):
+        return self.generate_linear_tcp_trajectory(start_tf, end_tf, n_points)
 
-        # Rozwiązanie alternatywne
-        alt_init = prev_active_angles.copy()
-        if len(alt_init) >= 6:
-            alt_init[0] = -alt_init[0] 
-            alt_init[3] = -alt_init[3] 
-            alt_init[5] = -alt_init[5] 
-            
-        sol_active_B = self.inverse_kinematics(target_pos, target_orient_3x3, alt_init)
-
-        # Teraz bezpiecznie liczymy różnicę, bo sol i prev mają ten sam wymiar dzięki _full_to_active i ifom
-        diffA = np.sum(np.abs(self._angle_difference_vector(sol_active_A, prev_active_angles)))
-        diffB = np.sum(np.abs(self._angle_difference_vector(sol_active_B, prev_active_angles)))
-
-        return sol_active_A if diffA < diffB else sol_active_B
-
-    # ================= TRAJEKTORIE =================
-
-    def generate_linear_tcp_trajectory(self, start_xyz, end_xyz, n_points):
-        A = np.array(start_xyz, dtype=float)
-        B = np.array(end_xyz, dtype=float)
-        return np.linspace(A, B, n_points)
-
-    def joint_trajectory_from_tcp(self, traj_xyz, traj_orient_3x3=True, initial_guess=None):
+    def joint_trajectory_from_tcp(self, traj_xyz, traj_rot_3x3, initial_guess=None):
         n_points = len(traj_xyz)
-        joint_traj = np.zeros((n_points, self.n_active_joints))
-
+        joint_traj = np.zeros((n_points, 6))
+        prev = np.zeros(6)
         if initial_guess is not None:
-            prev = np.array(initial_guess)
-            # Zabezpieczenie wymiaru initial_guess
-            if len(prev) > self.n_active_joints:
-                prev = prev[:self.n_active_joints]
-        else:
-            prev = np.zeros(self.n_active_joints)
-
-        for i in range(n_points):
-            pos = traj_xyz[i]
-            orient = traj_orient_3x3[i] if (traj_orient_3x3 is not None) else None
+            tmp = np.array(initial_guess)
+            if len(tmp)==7: tmp=tmp[1:]
+            if len(tmp)==6: prev=tmp
             
+        for i in range(n_points):
             try:
-                sol = self.continuous_ik(pos, orient, prev)
+                sol = self.inverse_kinematics(traj_xyz[i], traj_rot_3x3[i], prev)
                 joint_traj[i] = sol
-                prev = sol 
-            except Exception as e:
-                print(f"Błąd IK w punkcie {i}: {e}. Używam poprzednich kątów.")
+                prev = sol
+            except Exception:
                 joint_traj[i] = prev
-
         return joint_traj
 
-    def compute_joint_vel_acc(self, joint_traj, dt):
-        unwrapped = np.unwrap(joint_traj, axis=0)
-        vel = np.gradient(unwrapped, dt, axis=0)
-        acc = np.gradient(vel, dt, axis=0)
-        return vel, acc
+    # --- CONFIG LOADERS ---
+    def get_visual_origins(self): return self.visual_origins
+    def get_joint_limits(self): return self.joint_limits_rad
+    
+    def _load_active_joint_limits(self):
+        # Limity Parol6 w stopniach
+        deg = [
+            (-90, 90),  # J1 (Baza)
+            (-50, 140),   # J2 (Bark)
+            (-100, 70),  # J3 (Łokieć)
+            (-100, 180),  # J4 (Obrót ramienia)
+            (-120, 110),  # J5 (Pochylenie nadgarstka)
+            (-110, 180)   # J6 (Obrót narzędzia - może być większy)
+        ]
+        return [(np.deg2rad(mn), np.deg2rad(mx)) for mn, mx in deg]
 
-    def _angle_difference_vector(self, a, b):
-        # Tu następował crash. Teraz wymiary a i b są pilnowane.
-        diff = (a - b + np.pi) % (2 * np.pi) - np.pi
-        return diff
+    def _load_visual_origins(self, urdf_path):
+        origins = {}
+        try:
+            tree = ET.parse(urdf_path); root = tree.getroot()
+            for link in root.findall('link'):
+                vis = link.find('visual')
+                if vis:
+                    o = vis.find('origin')
+                    if o is not None:
+                        xyz = [float(x) for x in o.attrib.get('xyz','0 0 0').split()]
+                        rpy = [float(r) for r in o.attrib.get('rpy','0 0 0').split()]
+                        origins[link.attrib.get('name')] = (xyz, rpy)
+        except: pass
+        return origins
+
+    def _setup_mock_chain(self):
+        self.chain = type('Mock', (object,), {'links': [], 'active_links_mask': [], 'forward_kinematics': lambda *a, **k: np.eye(4), 'inverse_kinematics': lambda *a, **k: np.zeros(8)})()

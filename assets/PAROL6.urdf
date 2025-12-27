@@ -375,7 +375,7 @@
     </visual>
     <collision>
       <origin
-        xyz="0.074 -0.000453856352095022 -0.102"
+        xyz="0 0 0"
         rpy="0 0 0" />
       <geometry>
         <mesh
@@ -499,5 +499,19 @@
   <gazebo reference="L6"> 
     <selfCollide>true</selfCollide> 
   </gazebo>
+
+
+<!-- ================= TOOL / TCP ================= -->
+
+<link name="tool0"/>
+
+<joint name="tool0_fixed" type="fixed">
+  <parent link="L6"/>
+  <child link="tool0"/>
+  <!-- 13 cm w osi narzędzia – dostosuj jeśli potrzeba -->
+  <origin xyz="0.1 0 -0.04" rpy="0 0 0"/>
+</joint>
+
+
 
 </robot>

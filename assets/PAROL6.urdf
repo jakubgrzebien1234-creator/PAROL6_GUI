@@ -501,17 +501,5 @@
   </gazebo>
 
 
-<!-- ================= TOOL / TCP ================= -->
-
-<link name="tool0"/>
-
-<joint name="tool0_fixed" type="fixed">
-  <parent link="L6"/>
-  <child link="tool0"/>
-  <!-- 13 cm w osi narzędzia – dostosuj jeśli potrzeba -->
-  <origin xyz="0.1 0 -0.04" rpy="0 0 0"/>
-</joint>
-
-
 
 </robot>

@@ -8,20 +8,16 @@ from scipy.spatial.transform import Slerp
 # === TOOL DICTIONARY ===
 ROBOT_TOOLS = {
     "CHWYTAK_MALY": {
-        # PROSTY CHWYTAK (W OSI):
-        # X = 0 (Brak przesunięcia w bok)
-        # Y = 0 (Brak przesunięcia w bok)
-        # Z = Długość całkowita (np. 30mm bazy + 70mm końcówki = 10cm = 0.10)
-        
-        # Wpisz tutaj CAŁKOWITĄ długość od tarczy robota do czubka chwytaka:
-        "translation": [0.0, 0.0, 0.10],  
-        
+        # Przesunięcie o 100mm w przód (X) i 90mm w dół (Z)
+        "translation": [0.100, 0.0, -0.090],  
         "orientation": [0.0, 0.0, 0.0]
     },
     
     "CHWYTAK_DUZY": {
-        "translation": [0.0, 0.0, 0.15],   
-        "orientation": [0.0, 0.0, 0.0]
+        # Przesunięcie o 188.31mm w dół (Z), rotacja -90st Y
+        "translation": [0.0, 0.0, -0.18831],   
+        # -90 stopni w radianach = -1.570796
+        "orientation": [0.0, -1.570796, 0.0]
     }
 }
 

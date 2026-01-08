@@ -5,10 +5,28 @@ URDF_PATH = 'assets/PAROL6.urdf'
 
 # Pliki STL do wizualizacji (To są tylko pliki graficzne, nie muszą pokrywać się 1:1 z fizyką URDF)
 STL_FILES = [
-    'base_link_p.ply', 'L1_p.ply', 'L2_p.ply', 'L3_p.ply', 
+    'BaseMAIN.ply', 'L1_p.ply', 'L2_p.ply', 'L3_p.ply', 
     'L4_p.ply', 'L5_p.ply', 'VacGrip_p.ply'
 ]
+
+# Dodatkowe elementy statyczne podstawy (np. e-stop, pompa, obudowa)
+# Te pliki będą traktowane jako część bazy (nieruchome)
+BASE_EXTRA_FILES = [
+     'Estop.ply',
+     'supply.ply',
+     'dell.ply',
+     'pumpstand.ply',
+     'pump.ply'
+]
+
+# Przesunięcia dla dodatkowych plików (jeśli trzeba je poprawić ręcznie)
+# Format: "nazwa_pliku": (x, y, z)
+BASE_EXTRA_OFFSETS = {
+    'pump.ply': (0, 0, -0.02), # Przesunięcie w dół o 20 jednostek
+}
+
 #Stepper_Gripper.ply
+#base_link_p.ply
 LINK_NAMES = [
     'base_link', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6'
 ]

@@ -2,17 +2,14 @@ import serial
 import numpy as np
 import time
 import serial.tools.list_ports
+
 DEFAULT_BAUD_RATE = 115200 
 DEFAULT_TIMEOUT = 0.01 
-# === NOWOŚĆ: Mała pauza między wysłaniem J1, J2, J3... ===
-# To daje STM32 czas na przetworzenie każdej komendy.
-JOINT_SEND_DELAY = 0.005 # 5 milisekund
 
 _serial_instance = None 
 
 def open_serial_port(port_name: str, baud_rate: int = DEFAULT_BAUD_RATE, timeout: float = DEFAULT_TIMEOUT):
     global _serial_instance
-
     
     if _serial_instance is not None and _serial_instance.is_open:
         if _serial_instance.port == port_name:
@@ -28,6 +25,9 @@ def open_serial_port(port_name: str, baud_rate: int = DEFAULT_BAUD_RATE, timeout
             baudrate=baud_rate,
             timeout=timeout
         )
+        # Reset buforów, żeby nie czytać śmieci po starcie
+        _serial_instance.reset_input_buffer()
+        _serial_instance.reset_output_buffer()
         time.sleep(0.1) 
         print(f"Port szeregowy {port_name} otwarty.")
         return _serial_instance
@@ -40,35 +40,20 @@ def open_serial_port(port_name: str, baud_rate: int = DEFAULT_BAUD_RATE, timeout
         print(f"Nieznany błąd podczas otwierania portu {port_name}: {e}")
         raise
 
-def close_serial_port():
+def close_serial_port(port_name=None):
+    # Argument port_name dodany dla kompatybilności z workerem, 
+    # ale w tej implementacji zamykamy globalną instancję.
     global _serial_instance
     if _serial_instance is not None and _serial_instance.is_open:
         _serial_instance.close()
         _serial_instance = None
         print("Port szeregowy zamknięty.")
 
-
-# === NOWA FUNKCJA POMOCNICZA ===
-def send_single_angle_on_open_port(ser_handle: serial.Serial, joint_number: int, angle_deg: float):
-    """
-    Wysyła pojedynczą komendę kąta w formacie:
-    "J1_90.21\r\n"
-    """
-    try:
-        # Format: J1_90.21 (z podkreślnikiem)
-        command = f"J{joint_number}_{angle_deg:.2f}\r\n"
-        # print(f"→ {command.strip()}") # Opcjonalny debug
-        ser_handle.write(command.encode('ascii'))
-
-    except Exception as e:
-        print(f"Błąd podczas wysyłania kąta J{joint_number}: {e}")
-        raise
-
-# === ZMIENIONA FUNKCJA GŁÓWNA ===
+# === ZMODYFIKOWANA FUNKCJA DO WYSYŁANIA GRUPOWEGO ===
 def send_angles(port_name: str, angles_rad: np.ndarray):
     """
-    Zapewnia, że port jest otwarty i wysyła 6 KĄTÓW 
-    jako SZEŚĆ OSOBNYCH WIADOMOŚCI.
+    Konwertuje radiany na stopnie i wysyła je w JEDNEJ paczce:
+    Format: J_v1,v2,v3,v4,v5,v6\n
     """
     global _serial_instance
 
@@ -76,48 +61,51 @@ def send_angles(port_name: str, angles_rad: np.ndarray):
         raise serial.SerialException("Nie wybrano portu COM.")
 
     try:
-        ser = open_serial_port(port_name) 
+        # Używamy istniejącej instancji lub otwieramy nową
+        if _serial_instance and _serial_instance.is_open and _serial_instance.port == port_name:
+            ser = _serial_instance
+        else:
+            ser = open_serial_port(port_name)
 
         if not (ser and ser.is_open):
-             raise serial.SerialException(f"Port szeregowy {port_name} nie mógł zostać otwarty.")
+             raise serial.SerialException(f"Port szeregowy {port_name} nie jest otwarty.")
         
-        # 1. Konwersja na stopnie
+        # 1. Konwersja na stopnie (STM32 oczekuje stopni)
         angles_deg = np.degrees(angles_rad)
         
-        # 2. Wybór kątów (J1-J6)
+        # 2. Wybór kątów (ignorowanie indeksu 0 jeśli tablica ma 7 elementów)
         if len(angles_deg) == 7:
-            angles_to_send = angles_deg[1:]  # J1–J6
+            j = angles_deg[1:]  # J1–J6
         elif len(angles_deg) == 6:
-            angles_to_send = angles_deg
+            j = angles_deg
         else:
             print(f"Błąd formatu: Otrzymano {len(angles_deg)} kątów.")
             return
 
-        # 3. Pętla wysyłająca 6 osobnych komend
-        for i in range(6):
-            joint_num = i + 1
-            angle_val = angles_to_send[i]
-            
-            send_single_angle_on_open_port(ser, joint_num, angle_val)
-            #print(f'Wysłano kąt J{joint_num}: {angle_val:.2f}°') # Debug
-            # 4. Krytyczna pauza, aby STM32 nadążył
-            time.sleep(JOINT_SEND_DELAY) 
+        # 3. Budowanie stringa grupowego
+        # Format: J_90.00,0.00,10.50,-20.00,50.00,30.00\n
+        command = "J_{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.2f}\n".format(
+            j[0], j[1], j[2], j[3], j[4], j[5]
+        )
 
-        # print(f'Wysłano 6 kątów (osobno)') # Debug
+        # 4. Wysłanie jednej paczki
+        ser.write(command.encode('ascii'))
+        
+        # Opcjonalny debug (odkomentuj jeśli chcesz widzieć co leci)
+        # print(f"TX: {command.strip()}")
 
     except serial.SerialException as e:
         print(f"Błąd komunikacji UART z {port_name}: {e}")
         close_serial_port() 
         raise
     except Exception as e:
-        print(f"Nieznany błąd podczas wysyłania kątów przez UART: {e}")
+        print(f"Nieznany błąd podczas wysyłania kątów: {e}")
         close_serial_port() 
         raise
 
 def read_line(port_name: str):
     """
-    Sprawdza, czy na porcie są dane i odczytuje jedną linię.
-    (Bez zmian)
+    Odczytuje jedną linię z portu.
     """
     global _serial_instance
     
@@ -125,12 +113,18 @@ def read_line(port_name: str):
         return None 
     
     try:
-        ser = open_serial_port(port_name) 
-        
-        if ser and ser.is_open and ser.in_waiting > 0:
+        # Sprawdzamy instancję bez ponownego otwierania, jeśli to ten sam port
+        if _serial_instance and _serial_instance.is_open and _serial_instance.port == port_name:
+            ser = _serial_instance
+        else:
+            # Próba otwarcia tylko jeśli trzeba (choć w pętli głównej lepiej unikać ciągłego otwierania)
+            return None 
+
+        if ser.in_waiting > 0:
             line_bytes = ser.readline()
             if not line_bytes:
                 return None
+            # errors='ignore' zapobiega wywaleniu przy śmieciach na linii
             line_str = line_bytes.decode('ascii', errors='ignore').strip()
             if line_str:
                 return line_str
@@ -138,27 +132,30 @@ def read_line(port_name: str):
                 return None
         return None 
     except Exception as e:
+        # print(f"Błąd read_line: {e}") # Debug only
         return None
 
 def send_command(port_name: str, command: str):
     """
-    Wysyła pojedynczą komendę tekstową (np. "HOME", "VAC_ON") przez UART.
-    (Bez zmian)
+    Wysyła komendy tekstowe np. HOME, VAC_ON
     """
     global _serial_instance
 
     if port_name == "Brak portów" or port_name is None:
-        raise serial.SerialException("Nie wybrano portu COM.")
+        return
 
     try:
-        ser = open_serial_port(port_name)
-        if ser and ser.is_open:
-            command_to_send = f"{command}\r\n"
-            #print(f"→ {command_to_send.strip()}") # Debug
-            ser.write(command_to_send.encode('ascii'))
+        if _serial_instance and _serial_instance.is_open and _serial_instance.port == port_name:
+            ser = _serial_instance
         else:
-            raise serial.SerialException("Nie udało się otworzyć portu szeregowego.")
+            ser = open_serial_port(port_name)
+
+        if ser and ser.is_open:
+            if not command.endswith('\n'):
+                command += '\n'
+            ser.write(command.encode('ascii'))
+        else:
+            print("Port zamknięty, nie można wysłać komendy.")
     except Exception as e:
         print(f"Błąd wysyłania komendy '{command}': {e}")
         close_serial_port()
-        raise

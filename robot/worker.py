@@ -9,9 +9,9 @@ MAIN_LOOP_TIMER_MS = 20
 LINEAR_SPEED_M_S = 0.3  # Base speed at 100%
 
 # === WORKSPACE LIMITS (mm) ===
-LIMIT_X = (-300.0, 300.0)
-LIMIT_Y = (-300.0, 300.0)
-LIMIT_Z = (0.0, 500.0)
+LIMIT_X = (-500.0, 600.0)
+LIMIT_Y = (-550.0, 550.0)
+LIMIT_Z = (0.0, 600.0)
 
 try:
     import robot.communication as comm
@@ -491,9 +491,9 @@ class RobotWorker(QObject):
         return target_tf
 
     def _convert_user_coords_to_robot(self, X_u, Y_u, Z_u):
-        # Y user -> X robot, -X user -> Y robot
-        return np.array([Y_u/1000.0, -X_u/1000.0, Z_u/1000.0])
+        # Direct Frame: X user -> X robot, Y user -> Y robot
+        return np.array([X_u/1000.0, Y_u/1000.0, Z_u/1000.0])
 
     def _robot_coords_to_user(self, robot_pos_m):
         X_r, Y_r, Z_r = robot_pos_m
-        return (-Y_r*1000.0, X_r*1000.0, Z_r*1000.0)
+        return (X_r*1000.0, Y_r*1000.0, Z_r*1000.0)

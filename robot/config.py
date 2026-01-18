@@ -51,7 +51,7 @@ SLIDER_RANGE_MIN = 0
 SLIDER_RANGE_MAX = 1000
 # Domyślne wartości XYZ w GUI (w układzie użytkownika)
 DEFAULT_XYZ_GUI = [0.0, 150.0, 250.0] 
-RANGES_XYZ = [(-300.0, 300.0), (-300.0, 300.0), (0.0, 500.0)]
+RANGES_XYZ = [(-500.0, 600.0), (-550.0, 550.0), (0.0, 600.0)]
 RANGES_RPY = (-360.0, 360.0)
 
 TOOL_STL_MAP = {

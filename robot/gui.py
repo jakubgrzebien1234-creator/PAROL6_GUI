@@ -1,4 +1,4 @@
-# Plik: robot/gui.py
+# File: robot/gui.py
 
 import sys
 import functools
@@ -54,7 +54,7 @@ def parse_float_from_input(line_edit, default_val=0.0):
         return default_val
 
 # ------------------------
-# Class: Homing Dialog (Status Indicators) - FINAL POLISH (GLOW + VISIBLE TILES)
+# Class: Homing Dialog (Status Indicators) - Final Polish (Glow + Visible Tiles)
 # ------------------------
 class HomingDialog(QDialog):
     def __init__(self, parent=None):
@@ -62,35 +62,35 @@ class HomingDialog(QDialog):
         self.parent_ref = parent
         self.setWindowTitle("Robot Homing Procedure")
         
-        # 1. Ustawienia okna
+        # 1. Window settings
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Dialog)
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setFixedSize(520, 350) # Trochę wyższe, żeby zmieścić kafelki
+        self.setFixedSize(520, 350) # Slightly taller to fit tiles
         self.setModal(True) 
 
-        # 2. Layout z marginesem na poświatę
+        # 2. Layout with margin for glow
         outer_layout = QVBoxLayout(self)
         outer_layout.setContentsMargins(20, 20, 20, 20)
 
-        # 3. Ramka główna
+        # 3. Main frame
         self.frame = QtWidgets.QFrame()
         self.frame.setObjectName("MainFrame")
         
-        # === EFEKT NEONOWEJ POŚWIATY (GLOW) ===
-        # Zamiast czarnego cienia, dajemy kolor przewodni (Turkus/Cyan)
+        # === NEON GLOW EFFECT ===
+        # Instead of black shadow, use theme color (Turquoise/Cyan)
         shadow = QtWidgets.QGraphicsDropShadowEffect(self)
         shadow.setBlurRadius(25)
         shadow.setXOffset(0)
         shadow.setYOffset(0)
-        # Kolor: R, G, B, Alpha (przezroczystość) -> Turkusowy glow
+        # Color: R, G, B, Alpha (opacity) -> Turquoise glow
         shadow.setColor(QColor(0, 229, 255, 60)) 
         self.frame.setGraphicsEffect(shadow)
 
-        # 4. CSS - Nowoczesny i czytelny
+        # 4. CSS - Modern and readable
         self.frame.setStyleSheet("""
             QFrame#MainFrame {
-                background-color: #262626; /* Nieco jaśniejsze tło niż czerń 3D */
-                border: 1px solid #444;    /* Subtelna krawędź */
+                background-color: #262626; /* Slightly lighter background than 3D black */
+                border: 1px solid #444;    /* Subtle border */
                 border-radius: 12px;
             }
             
@@ -113,7 +113,7 @@ class HomingDialog(QDialog):
             }
             QPushButton#CloseBtn:hover { color: #ff5252; }
 
-            /* PRZYCISKI AKCJI */
+            /* ACTION BUTTONS */
             QPushButton#BtnAction {
                 background-color: #333;
                 color: #eee;
@@ -132,29 +132,29 @@ class HomingDialog(QDialog):
             }
             QPushButton#BtnAction:pressed { background-color: #222; }
 
-            /* KAFELKI OSI */
+            /* AXIS TILES */
             QLabel[role="axis_indicator"] {
                 background-color: #1a1a1a;
-                color: #444; /* Domyślnie ciemny tekst (nieaktywne) */
+                color: #444; /* Default dark text (inactive) */
                 border: 1px solid #333;
                 border-radius: 6px;
                 font-weight: bold;
                 font-size: 14px;
             }
             
-            /* Kafelki AKTYWNE (podczas homingu) */
+            /* ACTIVE Tiles (during homing) */
             QLabel[role="axis_indicator"][status="idle"] {
                 color: #777;
                 border: 1px solid #555;
             }
             
-            /* HIT - Pomarańcz */
+            /* HIT - Orange */
             QLabel[role="axis_indicator"][status="hit"] {
                 background-color: #3e2723; 
                 color: #ffab91;
                 border: 1px solid #ff5722;
             }
-            /* DONE - Zieleń */
+            /* DONE - Green */
             QLabel[role="axis_indicator"][status="done"] {
                 background-color: #1b5e20; 
                 color: #a5d6a7;
@@ -162,8 +162,8 @@ class HomingDialog(QDialog):
             }
             QPushButton#CloseBtn {
                 background-color: transparent;
-                color: #aaaaaa; /* Jaśniejszy szary, żeby był widoczny na ciemnym tle */
-                font-weight: 900; /* Bardzo gruby font */
+                color: #aaaaaa; /* Lighter gray to be visible on dark background */
+                font-weight: 900; /* Very bold font */
                 font-size: 20px;
                 border: none;
                 margin: 0px;
@@ -172,9 +172,9 @@ class HomingDialog(QDialog):
                 min-height: 30px;
             }
             QPushButton#CloseBtn:hover {
-                color: #ffffff; /* Biały po najechaniu */
-                background-color: #c62828; /* Czerwone tło po najechaniu */
-                border-radius: 15px; /* Okrągłe tło */
+                color: #ffffff; /* White on hover */
+                background-color: #c62828; /* Red background on hover */
+                border-radius: 15px; /* Round background */
             }
 
             QProgressBar {
@@ -188,14 +188,14 @@ class HomingDialog(QDialog):
 
         outer_layout.addWidget(self.frame)
 
-        # 5. Budowanie wnętrza
+        # 5. Building content
         self.layout = QVBoxLayout(self.frame)
         self.layout.setContentsMargins(30, 25, 30, 30)
         self.layout.setSpacing(15)
 
-        # --- GÓRA ---
+        # --- TOP ---
         header = QtWidgets.QHBoxLayout()
-        header.setContentsMargins(0, 0, 0, 0) # Opcjonalnie: usuń marginesy nagłówka
+        header.setContentsMargins(0, 0, 0, 0) # Optional: remove header margins
         self.lbl_title = QLabel("Homing Procedure")
         self.lbl_title.setObjectName("TitleLabel")
         
@@ -210,19 +210,19 @@ class HomingDialog(QDialog):
         header.addWidget(self.btn_close)
         self.layout.addLayout(header)
 
-        # Linia
+        # Line
         line = QtWidgets.QFrame()
         line.setFrameShape(QtWidgets.QFrame.HLine)
         line.setStyleSheet("background-color: #444; max-height: 1px;")
         self.layout.addWidget(line)
 
-        # Opis
+        # Description
         self.lbl_desc = QLabel("System needs calibration. Please ensure workspace is clear.")
         self.lbl_desc.setStyleSheet("color: #999; font-size: 13px; margin-bottom: 5px;")
         self.lbl_desc.setAlignment(Qt.AlignLeft)
         self.layout.addWidget(self.lbl_desc)
 
-        # --- PRZYCISKI ---
+        # --- BUTTONS ---
         self.btn_container = QtWidgets.QWidget()
         btn_layout = QVBoxLayout(self.btn_container)
         btn_layout.setContentsMargins(0, 0, 0, 0)
@@ -242,7 +242,7 @@ class HomingDialog(QDialog):
         btn_layout.addWidget(self.btn_confirm)
         self.layout.addWidget(self.btn_container)
 
-        # --- PROGRESS BAR (Domyślnie ukryty) ---
+        # --- PROGRESS BAR (Hidden by default) ---
         self.progress_container = QtWidgets.QWidget()
         p_layout = QVBoxLayout(self.progress_container)
         p_layout.setContentsMargins(0, 10, 0, 10)
@@ -260,8 +260,8 @@ class HomingDialog(QDialog):
         self.progress_container.hide()
         self.layout.addWidget(self.progress_container)
 
-        # --- KAFELKI OSI (Teraz ZAWSZE widoczne na dole) ---
-        # Dzięki temu okno nie jest puste
+        # --- AXIS TILES (Now ALWAYS visible at the bottom) ---
+        # So the window is not empty
         self.indicators_container = QtWidgets.QWidget()
         ind_layout = QtWidgets.QHBoxLayout(self.indicators_container)
         ind_layout.setSpacing(10)
@@ -273,7 +273,7 @@ class HomingDialog(QDialog):
             lbl.setFixedSize(40, 40)
             lbl.setAlignment(Qt.AlignCenter)
             lbl.setProperty("role", "axis_indicator")
-            # Stan początkowy - idle (szary)
+            # Initial state - idle (gray)
             lbl.setProperty("status", "idle_dimmed") 
             self.axis_labels.append(lbl)
             ind_layout.addWidget(lbl)
@@ -295,7 +295,7 @@ class HomingDialog(QDialog):
         self.btn_container.hide()
         self.progress_container.show()
         
-        # Zmieniamy status kafelków na 'idle' (jaśniejsze obramowanie)
+        # Change tiles status to 'idle' (lighter border)
         for i in range(6): 
             lbl = self.axis_labels[i]
             lbl.setProperty("status", "idle")
@@ -323,20 +323,20 @@ class HomingDialog(QDialog):
 # Class: Tool Selection Dialog (Graphical)
 # ------------------------
 class ToolSelectionDialog(QDialog):
-    # Sygnał zwracający nazwę wybranego narzędzia (zgodną z configiem)
+    # Signal returning selected tool name (matches config)
     tool_selected = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Select End Effector")
         
-        # Ustawienia okna - brak ramki, zawsze na wierzchu, przezroczyste tło dla zaokrągleń
+        # Window settings - frameless, always on top, transparent background for rounded corners
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Dialog)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setFixedSize(600, 350)
         self.setModal(True)
 
-        # Główny styl CSS
+        # Main CSS style
         self.setStyleSheet("""
             QDialog {
                 background-color: #2b2b2b;
@@ -360,7 +360,7 @@ class ToolSelectionDialog(QDialog):
             }
             QToolButton:hover {
                 background-color: #505050;
-                border: 2px solid #00e5ff; /* Turkusowe podświetlenie */
+                border: 2px solid #00e5ff; /* Turquoise highlight */
                 color: white;
             }
             QToolButton:pressed {
@@ -369,8 +369,8 @@ class ToolSelectionDialog(QDialog):
             }
             QPushButton#CloseBtn {
                 background-color: transparent;
-                color: #aaaaaa; /* Jaśniejszy szary, żeby był widoczny na ciemnym tle */
-                font-weight: 900; /* Bardzo gruby font */
+                color: #aaaaaa; /* Lighter gray to be visible on dark background */
+                font-weight: 900; /* Very bold font */
                 font-size: 20px;
                 border: none;
                 margin: 0px;
@@ -379,17 +379,17 @@ class ToolSelectionDialog(QDialog):
                 min-height: 30px;
             }
             QPushButton#CloseBtn:hover {
-                color: #ffffff; /* Biały po najechaniu */
-                background-color: #c62828; /* Czerwone tło po najechaniu */
-                border-radius: 15px; /* Okrągłe tło */
+                color: #ffffff; /* White on hover */
+                background-color: #c62828; /* Red background on hover */
+                border-radius: 15px; /* Round background */
             }
         """)
 
-        # Layout główny
+        # Main layout
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 10, 20, 30)
 
-        # --- Nagłówek z przyciskiem zamknij ---
+        # --- Header with close button ---
         header_layout = QtWidgets.QHBoxLayout()
         lbl_title = QLabel("CHANGE ACTIVE TOOL")
         lbl_title.setAlignment(Qt.AlignCenter)
@@ -407,43 +407,43 @@ class ToolSelectionDialog(QDialog):
 
         layout.addSpacing(10)
 
-        # --- Kontener na przyciski narzędzi ---
+        # --- Container for tool buttons ---
         tools_layout = QtWidgets.QHBoxLayout()
         tools_layout.setSpacing(30)
 
-        # Przycisk 1: PNEUMATYCZNY (VGrip)
+        # Button 1: PNEUMATIC (VGrip)
         self.btn_v_grip = QtWidgets.QToolButton()
         self.btn_v_grip.setText("Vacuum Gripper")
         self.btn_v_grip.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
-        self.btn_v_grip.setIconSize(QtCore.QSize(180, 150)) # Rozmiar obrazka
-        self.btn_v_grip.setFixedSize(220, 220) # Rozmiar całego przycisku
+        self.btn_v_grip.setIconSize(QtCore.QSize(180, 150)) # Image size
+        self.btn_v_grip.setFixedSize(220, 220) # Entire button size
         
-        # Ładowanie obrazka VGrip.png
+        # Loading VGrip.png image
         pix_v = QPixmap("assets/VGrip.png")
         if not pix_v.isNull():
             self.btn_v_grip.setIcon(QtGui.QIcon(pix_v))
         else:
             self.btn_v_grip.setText("Vacuum Gripper\n(NO IMAGE)")
 
-        # Kliknięcie wybiera narzędzie "CHWYTAK_MALY" (zgodnie z Twoim starym kodem)
-        self.btn_v_grip.clicked.connect(lambda: self.select_tool("VGrip"))
+        # Click selects tool "CHWYTAK_MALY" (as per old code)
+        self.btn_v_grip.clicked.connect(lambda: self.select_tool("CHWYTAK_MALY"))
         
-        # Przycisk 2: ELEKTRYCZNY (EGrip)
+        # Button 2: ELECTRIC (EGrip)
         self.btn_e_grip = QtWidgets.QToolButton()
         self.btn_e_grip.setText("Electric Gripper")
         self.btn_e_grip.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         self.btn_e_grip.setIconSize(QtCore.QSize(180, 150))
         self.btn_e_grip.setFixedSize(220, 220)
 
-        # Ładowanie obrazka EGrip.png
+        # Loading EGrip.png image
         pix_e = QPixmap("assets/EGrip.png")
         if not pix_e.isNull():
             self.btn_e_grip.setIcon(QtGui.QIcon(pix_e))
         else:
             self.btn_e_grip.setText("Electric Gripper\n(NO IMAGE)")
 
-        # Kliknięcie wybiera narzędzie "CHWYTAK_DUZY"
-        self.btn_e_grip.clicked.connect(lambda: self.select_tool("EGrip"))
+        # Click selects tool "CHWYTAK_DUZY"
+        self.btn_e_grip.clicked.connect(lambda: self.select_tool("CHWYTAK_DUZY"))
 
         tools_layout.addStretch()
         tools_layout.addWidget(self.btn_v_grip)
@@ -454,44 +454,44 @@ class ToolSelectionDialog(QDialog):
 
     def select_tool(self, tool_code):
         self.tool_selected.emit(tool_code)
-        self.accept() # Zamyka okno
+        self.accept() # Closes window
 
 
 
 # ------------------------
-# Class: About Dialog (Info o autorze) - REDESIGN V2
+# Class: About Dialog (Author Info) - REDESIGN V2
 # ------------------------
 class AboutDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("O Programie")
+        self.setWindowTitle("About")
         
-        # 1. Ustawienia okna (Bezramkowe, Przezroczyste)
+        # 1. Window settings (Frameless, Transparent)
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Dialog)
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setFixedSize(400, 520) # Nieco wyższe dla lepszych odstępów
+        self.setFixedSize(400, 520) # Slightly taller for better spacing
         self.setModal(True)
 
-        # 2. Layout zewnętrzny (margines na cień)
+        # 2. Outer layout (margin for shadow)
         outer_layout = QVBoxLayout(self)
         outer_layout.setContentsMargins(20, 20, 20, 20)
 
-        # 3. Ramka główna (Karta)
+        # 3. Main frame (Card)
         self.frame = QtWidgets.QFrame()
         self.frame.setObjectName("AboutFrame")
         
-        # Efekt Glow (Turkusowy, pasujący do reszty)
+        # Glow Effect (Turquoise, matching the rest)
         shadow = QtWidgets.QGraphicsDropShadowEffect(self)
         shadow.setBlurRadius(30)
         shadow.setXOffset(0)
         shadow.setYOffset(0)
-        shadow.setColor(QColor(0, 229, 255, 80)) # Turkusowa poświata
+        shadow.setColor(QColor(0, 229, 255, 80)) # Turquoise glow
         self.frame.setGraphicsEffect(shadow)
 
-        # 4. Styl CSS - "Wizytówka"
+        # 4. CSS Style - "Business Card"
         self.frame.setStyleSheet("""
             QFrame#AboutFrame {
-                background-color: #1e1e1e; /* Ciemne tło */
+                background-color: #1e1e1e; /* Dark background */
                 border: 1px solid #444;
                 border-radius: 16px;
             }
@@ -502,18 +502,18 @@ class AboutDialog(QDialog):
                 border: none;
             }
 
-            /* Logo Container - Białe tło pod obrazek */
+            /* Logo Container - White background for image */
             QLabel#LogoContainer {
                 background-color: white; 
-                border-radius: 12px; /* Zaokrąglone rogi logo */
-                border: 4px solid #333; /* Ramka wokół logo */
+                border-radius: 12px; /* Rounded logo corners */
+                border: 4px solid #333; /* Frame around logo */
             }
 
-            /* Typografia */
+            /* Typography */
             QLabel#Title { 
                 font-size: 13px; 
                 font-weight: bold; 
-                color: #00e5ff; /* Turkus */
+                color: #00e5ff; /* Turquoise */
                 letter-spacing: 2px;
                 text-transform: uppercase;
             }
@@ -540,7 +540,7 @@ class AboutDialog(QDialog):
                 font-weight: bold;
             }
 
-            /* Przycisk X w rogu */
+            /* X button in corner */
             QPushButton#CloseX {
                 background-color: transparent;
                 color: #888;
@@ -554,7 +554,7 @@ class AboutDialog(QDialog):
                 border-radius: 15px;
             }
             
-            /* Dolny przycisk Zamknij */
+            /* Bottom Close button */
             QPushButton#BtnClose {
                 background-color: #333;
                 color: #ccc;
@@ -572,13 +572,13 @@ class AboutDialog(QDialog):
 
         outer_layout.addWidget(self.frame)
         
-        # 5. Budowanie wnętrza
+        # 5. Building content
         layout = QVBoxLayout(self.frame)
         layout.setAlignment(Qt.AlignTop)
         layout.setContentsMargins(20, 15, 20, 30)
         layout.setSpacing(5)
 
-        # --- GÓRA: X do zamknięcia ---
+        # --- TOP: X to close ---
         header_layout = QtWidgets.QHBoxLayout()
         header_layout.addStretch()
         
@@ -591,21 +591,21 @@ class AboutDialog(QDialog):
         
         layout.addLayout(header_layout)
 
-        # --- LOGO (Centralne) ---
-        # Kontener na logo
+        # --- LOGO (Centered) ---
+        # Logo container
         logo_container = QtWidgets.QVBoxLayout()
         logo_container.setSpacing(0)
         logo_container.setAlignment(Qt.AlignCenter)
 
         self.lbl_logo = QLabel()
-        self.lbl_logo.setObjectName("LogoContainer") # Styl z białym tłem
+        self.lbl_logo.setObjectName("LogoContainer") # Style with white background
         self.lbl_logo.setAlignment(Qt.AlignCenter)
-        self.lbl_logo.setFixedSize(140, 140) # Stały rozmiar kwadratu
+        self.lbl_logo.setFixedSize(140, 140) # Fixed square size
         
-        # Ładowanie i skalowanie
+        # Loading and scaling
         pix = QPixmap("assets/AT.png")
         if not pix.isNull():
-            # Skalujemy obrazek żeby miał margines wewnątrz białej ramki
+            # Scale image to have margin inside white frame
             self.lbl_logo.setPixmap(pix.scaled(110, 110, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         else:
             self.lbl_logo.setText("AT LOGO")
@@ -614,27 +614,27 @@ class AboutDialog(QDialog):
         logo_container.addWidget(self.lbl_logo)
         layout.addLayout(logo_container)
 
-        layout.addSpacing(25) # Odstęp pod logo
+        layout.addSpacing(25) # Spacing below logo
 
-        # --- TEKST (Centralny) ---
-        # Sekcja 1: Tytuł Pracy
-        lbl_title = QLabel("PRACA INŻYNIERSKA")
+        # --- TEXT (Centered) ---
+        # Section 1: Thesis Title
+        lbl_title = QLabel("ENGINEERING THESIS")
         lbl_title.setObjectName("Title")
         lbl_title.setAlignment(Qt.AlignCenter)
         layout.addWidget(lbl_title)
 
-        # Sekcja 2: Autor
+        # Section 2: Author
         lbl_author = QLabel("Jakub Grzebień")
         lbl_author.setObjectName("AuthorName")
         lbl_author.setAlignment(Qt.AlignCenter)
         layout.addWidget(lbl_author)
 
     
-        layout.addSpacing(30) # Odstęp przed uczelnią
+        layout.addSpacing(30) # Spacing before university
 
-        # Sekcja 3: Uczelnia
-        # Dodajemy ikonkę czapki absolwenta (tekstowo) dla ozdoby
-        lbl_uni = QLabel("🎓 Akademia Tarnowska")
+        # Section 3: University
+        # Adding graduation cap icon (text) for decoration
+        lbl_uni = QLabel("🎓 Tarnow Academy")
         lbl_uni.setObjectName("University")
         lbl_uni.setAlignment(Qt.AlignCenter)
         layout.addWidget(lbl_uni)
@@ -646,13 +646,13 @@ class AboutDialog(QDialog):
 
         layout.addStretch()
 
-        # --- DÓŁ: Przycisk Zamknij ---
-        btn_close = QtWidgets.QPushButton("Zamknij")
+        # --- BOTTOM: Close Button ---
+        btn_close = QtWidgets.QPushButton("Close")
         btn_close.setObjectName("BtnClose")
         btn_close.setCursor(Qt.PointingHandCursor)
         btn_close.clicked.connect(self.accept)
         
-        # Centrujemy przycisk na dole
+        # Center button at the bottom
         bottom_layout = QtWidgets.QHBoxLayout()
         bottom_layout.addStretch()
         bottom_layout.addWidget(btn_close)
@@ -693,7 +693,7 @@ class MainWindow(QtWidgets.QWidget):
         self.standby_angles = np.array([0] + [np.radians(a) for a in config.STANDBY_ANGLES_DEG])
         self.current_orientation = None 
 
-        # >>> NOWE: Stany chwytaków <<<
+        # >>> NEW: Gripper states <<<
         self.pneumatic_active = False # True = ON
         self.electric_active = False  # True = CLOSE
         
@@ -904,20 +904,20 @@ class MainWindow(QtWidgets.QWidget):
         control_layout.setSpacing(10)
         control_layout.setContentsMargins(0, 0, 0, 0)
 
-        # === NAGŁÓWEK PANELU (Tytuł + Przycisk ABOUT) ===
+        # === PANEL HEADER (Title + ABOUT Button) ===
         header_widget = QtWidgets.QWidget()
         header_layout = QtWidgets.QHBoxLayout(header_widget)
-        header_layout.setContentsMargins(5, 5, 5, 0) # Lekki margines z góry
+        header_layout.setContentsMargins(5, 5, 5, 0) # Slight top margin
 
         lbl_panel_name = QLabel("PAROL6 CONTROL")
         lbl_panel_name.setStyleSheet("font-weight: 900; color: #666; font-size: 12px; letter-spacing: 1px;")
         
-        # >>> ZMIANA: Przycisk ABOUT zamiast kółka 'i' <<<
+        # >>> CHANGE: ABOUT button instead of 'i' circle <<<
         self.btn_info = QtWidgets.QPushButton("ABOUT")
-        self.btn_info.setFixedSize(85, 26) # Szerszy, prostokątny
+        self.btn_info.setFixedSize(85, 26) # Wider, rectangular
         self.btn_info.setCursor(Qt.PointingHandCursor)
         
-        # Opcjonalnie: Dodaj ikonę, jeśli jest biblioteka
+        # Optional: Add icon if library exists
         if HAS_QTA:
             self.btn_info.setIcon(qta.icon("fa5s.info-circle", color='#00e5ff'))
             self.btn_info.setIconSize(QtCore.QSize(14, 14))
@@ -925,24 +925,24 @@ class MainWindow(QtWidgets.QWidget):
         self.btn_info.setStyleSheet("""
             QPushButton {
                 background-color: transparent;
-                color: #00e5ff; /* Turkusowy tekst */
-                border: 1px solid #00e5ff; /* Turkusowa ramka */
-                border-radius: 4px; /* Lekko zaokrąglone rogi */
+                color: #00e5ff; /* Turquoise text */
+                border: 1px solid #00e5ff; /* Turquoise border */
+                border-radius: 4px; /* Slightly rounded corners */
                 font-weight: bold;
                 font-size: 11px;
                 font-family: 'Segoe UI', sans-serif;
-                padding-bottom: 2px; /* Korekta pionowa tekstu */
+                padding-bottom: 2px; /* Vertical text adjustment */
             }
             QPushButton:hover {
-                background-color: rgba(0, 229, 255, 0.15); /* Delikatne podświetlenie tła */
+                background-color: rgba(0, 229, 255, 0.15); /* Subtle background highlight */
                 border: 1px solid #00b8d4;
             }
             QPushButton:pressed {
-                background-color: #00e5ff; /* Pełny kolor przy kliknięciu */
-                color: #121212; /* Czarny tekst dla kontrastu */
+                background-color: #00e5ff; /* Full color on click */
+                color: #121212; /* Black text for contrast */
             }
         """)
-        # Podłączamy funkcję otwierania okna
+        # Connecting window open function
         self.btn_info.clicked.connect(self.show_about_dialog)
 
         header_layout.addWidget(lbl_panel_name)
@@ -1084,13 +1084,13 @@ class MainWindow(QtWidgets.QWidget):
         # Add manual tab
         self.tab_widget.addTab(manual_tab, "Manual")
 
-       # === TAB 2: Auto / Program (WERSJA CZYTELNA) ===
+       # === TAB 2: Auto / Program (READABLE VERSION) ===
         program_tab = QtWidgets.QWidget()
         program_layout = QtWidgets.QVBoxLayout(program_tab)
         program_layout.setContentsMargins(5, 10, 5, 5) 
         program_layout.setSpacing(6)
         
-        # 1. Edytor Programu (Większa czcionka)
+        # 1. Program Editor (Larger font)
         lbl_editor = QLabel("PROGRAM EDITOR")
         lbl_editor.setStyleSheet("font-size: 9px; font-weight: bold; color: #888; margin-left: 2px;")
         program_layout.addWidget(lbl_editor)
@@ -1098,7 +1098,7 @@ class MainWindow(QtWidgets.QWidget):
         self.program_editor = QtWidgets.QPlainTextEdit()
         self.program_editor.setPlaceholderText("Example:\nMOVESTB\nMOVE(200, 0, 150)\nDELAY(500)")
         
-        # >>> ZMIANA: Zwiększona czcionka do 14px
+        # >>> CHANGE: Font increased to 14px
         self.program_editor.setStyleSheet("""
             QPlainTextEdit {
                 background-color: #1e1e1e;
@@ -1111,10 +1111,10 @@ class MainWindow(QtWidgets.QWidget):
             }
         """)
         self.program_editor.textChanged.connect(self.validate_program_syntax)
-        # Widget z parametrem '1' rozciąga się na wolne miejsce
+        # Widget with '1' parameter stretches to fill space
         program_layout.addWidget(self.program_editor, 1) 
         
-        # 2. Przyciski Run/Stop
+        # 2. Run/Stop Buttons
         prog_btns = QtWidgets.QHBoxLayout()
         prog_btns.setSpacing(5)
 
@@ -1145,7 +1145,7 @@ class MainWindow(QtWidgets.QWidget):
         line.setStyleSheet("background-color: #333; margin: 2px 0;")
         program_layout.addWidget(line)
 
-        # 3. Lista Komend (Bez suwaka, wyższa)
+        # 3. Command List (No scrollbar, taller)
         lbl_help = QLabel("COMMAND REFERENCE")
         lbl_help.setStyleSheet("font-size: 9px; font-weight: bold; color: #00e5ff; margin-left: 2px;")
         program_layout.addWidget(lbl_help)
@@ -1154,19 +1154,19 @@ class MainWindow(QtWidgets.QWidget):
         self.cmd_table.setColumnCount(2)
         self.cmd_table.setHorizontalHeaderLabels(["Syntax", "Desc"])
         
-        # Ukrywamy nagłówek pionowy i poziomy (żeby było czyściej i więcej miejsca)
+        # Hide vertical and horizontal headers (cleaner and more space)
         self.cmd_table.verticalHeader().setVisible(False) 
         
-        # Ustawienia kolumn
+        # Column settings
         self.cmd_table.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
         self.cmd_table.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
         self.cmd_table.horizontalHeader().setFixedHeight(22)
         
-        # >>> ZMIANA: Wyłączamy suwaki całkowicie
+        # >>> CHANGE: Disable scrollbars completely
         self.cmd_table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.cmd_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
-        # >>> ZMIANA: Zwiększona wysokość tabeli (mieści 8 wierszy x 24px + nagłówek)
+        # >>> CHANGE: Increased table height (fits 8 rows x 24px + header)
         self.cmd_table.setFixedHeight(215) 
 
         self.cmd_table.setStyleSheet("""
@@ -1176,7 +1176,7 @@ class MainWindow(QtWidgets.QWidget):
                 border-radius: 3px;
                 gridline-color: #2a2a2a;
                 color: #ccc;
-                font-size: 11px; /* Nieco większy font w tabeli */
+                font-size: 11px; /* Slightly larger font in table */
             }
             QHeaderView::section {
                 background-color: #2b2b2b;
@@ -1202,7 +1202,7 @@ class MainWindow(QtWidgets.QWidget):
         ]
 
         self.cmd_table.setRowCount(len(commands_data))
-        # >>> ZMIANA: Wyższe wiersze dla czytelności (24px)
+        # >>> CHANGE: Taller rows for readability (24px)
         self.cmd_table.verticalHeader().setDefaultSectionSize(24) 
 
         for row, (syntax, desc) in enumerate(commands_data):
@@ -1228,7 +1228,7 @@ class MainWindow(QtWidgets.QWidget):
         """Displays the info dialog."""
         dlg = AboutDialog(self)
         
-        # Centrowanie względem okna głównego
+        # Centering relative to main window
         geo = self.geometry()
         x = geo.x() + (geo.width() - dlg.width()) // 2
         y = geo.y() + (geo.height() - dlg.height()) // 2
@@ -1397,10 +1397,10 @@ class MainWindow(QtWidgets.QWidget):
         self.tool_btn    = create_btn("TOOL", "fa5s.tools", "#00838f", "🔧")          
         self.camera_btn  = create_btn("CAMERA", "fa5s.video", "#455a64", "📷")        
 
-       # Pneumatyczny: Domyślnie OFF -> Puste kółko
+       # Pneumatic: Default OFF -> Empty circle
         self.pneumatic_btn = create_btn("VACUUM: OFF", "fa5s.circle", "#009688", "○")
         
-        # Elektryczny: Domyślnie OPEN -> Otwarta dłoń
+        # Electric: Default OPEN -> Open hand
         self.electric_btn = create_btn("E-GRIP: OPEN", "fa5s.hand-paper", "#673ab7", "✋")
 
         btns_layout.addWidget(self.home_button)
@@ -1410,7 +1410,7 @@ class MainWindow(QtWidgets.QWidget):
         btns_layout.addWidget(self.tool_btn)
         btns_layout.addWidget(self.camera_btn)
         
-        # Dodanie nowych przycisków do layoutu
+        # Adding new buttons to layout
         btns_layout.addWidget(self.pneumatic_btn)
         btns_layout.addWidget(self.electric_btn)
         
@@ -1457,7 +1457,7 @@ class MainWindow(QtWidgets.QWidget):
             mesh_data.fix_normals()
             mesh_data.fill_holes()
             
-            # Konwersja kolorów (obsługa OBJ/3MF z Fusion)
+            # Color conversion (Fusion OBJ/3MF support)
             if hasattr(mesh_data.visual, 'to_color'):
                 try:
                     mesh_data.visual = mesh_data.visual.to_color()
@@ -1582,7 +1582,7 @@ class MainWindow(QtWidgets.QWidget):
         self.safety_btn.clicked.connect(self.on_safety_click)
         self.tool_btn.clicked.connect(self.on_tool_change_click)
         
-        # >>> NOWE POŁĄCZENIA SYGNAŁÓW <<<
+        # >>> NEW SIGNAL CONNECTIONS <<<
         self.pneumatic_btn.clicked.connect(self.on_pneumatic_click)
         self.electric_btn.clicked.connect(self.on_electric_click)
         
@@ -1630,16 +1630,16 @@ class MainWindow(QtWidgets.QWidget):
 
         current_port = self.port_combo.currentText()
         self.set_port_signal.emit(current_port)
-        self.on_port_changed(current_port) # <--- Wywołujemy ręcznie, żeby ustawić status na starcie
+        self.on_port_changed(current_port) # <--- Call manually to set status at start
         
         self.worker_thread.start()
         self.set_port_signal.emit(self.port_combo.currentText())
 
-        self.active_cyclic_code = None  # Tutaj trzymamy kod (np. "E2"), jeśli jest aktywny
+        self.active_cyclic_code = None  # Here we store the code (e.g., "E2") if active
         
         self.diag_timer = QTimer(self)
         self.diag_timer.timeout.connect(self.on_diagnostic_tick)
-        self.diag_timer.start(500)  # Czas w milisekundach (500ms)
+        self.diag_timer.start(500)  # Time in milliseconds (500ms)
 
     def closeEvent(self, event):
         print("Closing application...")
@@ -1651,7 +1651,7 @@ class MainWindow(QtWidgets.QWidget):
 
 
     def _check_homed_safe(self):
-        """Zwraca True jeśli robot jest zbazowany, w przeciwnym razie wyświetla błąd."""
+        """Returns True if robot is homed, otherwise shows error."""
         if not self.is_homed:
             self.update_status_label("BLOCKED: Robot not homed! Press HOME first.", "red")
             print("[GUI] Movement blocked - Robot not homed.")
@@ -1660,15 +1660,15 @@ class MainWindow(QtWidgets.QWidget):
         return True
     
     def on_port_changed(self, port_name):
-        """Obsługuje zmianę statusu wizualnego pod portem COM."""
+        """Handles visual status change under COM port."""
         if port_name == "No ports" or not port_name:
             self.uart_status_label.setText("DISCONNECTED")
-            # Szary/Czerwony styl
+            # Gray/Red style
             self.uart_status_label.setStyleSheet("color: #777; font-weight: bold; font-size: 11px;")
             self.send_diagnostic_code("E4")
         else:
             self.uart_status_label.setText("CONNECTED")
-            # Turkusowy/Zielony styl
+            # Turquoise/Green style
             self.uart_status_label.setStyleSheet("color: #00e5ff; font-weight: bold; font-size: 11px;")
 
     # ------------------------
@@ -1727,8 +1727,8 @@ class MainWindow(QtWidgets.QWidget):
         Y_user_mm = parse_float_from_input(self.xyz_inputs['Y'], default_val=0.0)
         Z_user_mm = parse_float_from_input(self.xyz_inputs['Z'], default_val=250.0) 
 
-        X_robot_m =  Y_user_mm / 1000.0
-        Y_robot_m = -X_user_mm / 1000.0
+        X_robot_m =  X_user_mm / 1000.0
+        Y_robot_m =  Y_user_mm / 1000.0
         Z_robot_m =  Z_user_mm / 1000.0
             
         return np.array([X_robot_m, Y_robot_m, Z_robot_m])
@@ -1736,10 +1736,10 @@ class MainWindow(QtWidgets.QWidget):
     @pyqtSlot(str, str)
     def update_status_label(self, text, color):
         """
-        Aktualizuje TYLKO dolny baner.
-        Nie dotyka etykiety pod portem COM (ona ma pokazywać tylko CONNECTED/DISCONNECTED).
+        Updates ONLY bottom banner.
+        Does not touch the label under COM port (it should only show CONNECTED/DISCONNECTED).
         """
-        # 1. Logika HomingDialog (bez zmian)
+        # 1. HomingDialog logic (unchanged)
         if self.homing_dialog and self.homing_dialog.isVisible():
             clean_text = text.strip().upper()
             if len(clean_text) >= 2 and clean_text[1].isdigit():
@@ -1750,16 +1750,16 @@ class MainWindow(QtWidgets.QWidget):
                     if code == 'H': self.homing_dialog.set_axis_state(axis_idx, 'HIT'); return
                     elif code == 'R': self.homing_dialog.set_axis_state(axis_idx, 'DONE'); return
 
-        # 2. Filtr wiadomości (bez zmian)
+        # 2. Message filter (unchanged)
         ALLOWED_KEYWORDS = ["HOMING", "HOME", "MOVE", "MOVING", "STOP", "ESTOP", 
                             "READY", "STANDBY", "ERROR", "LIMIT", "VACUUM", "GRIP", "COMPLETE", "FINISH"]
         
         is_relevant = any(keyword in text.upper() for keyword in ALLOWED_KEYWORDS)
         if not is_relevant: return
 
-        # 3. USUNIĘTO: self.uart_status_label.setText(text)  <-- TEGO JUŻ TU NIE MA!
+        # 3. REMOVED: self.uart_status_label.setText(text)  <-- THIS IS GONE!
 
-        # 4. Aktualizacja dolnego banera
+        # 4. Bottom banner update
         bg_color = "#333333"; text_color = "#ffffff"; border_color = "#555555"
         if "red" in color: bg_color = "#c62828"; border_color = "#ff8a80"; text = f"⚠️ {text.upper()} ⚠️"
         elif "orange" in color: bg_color = "#ef6c00"; border_color = "#ffe0b2"
@@ -1813,20 +1813,59 @@ class MainWindow(QtWidgets.QWidget):
 
     def update_rpy_inputs_from_matrix(self, matrix):
         try:
+            # 1. Calculate RPY from FK matrix (canonical)
             r = R.from_matrix(matrix[:3, :3])
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                roll, pitch, yaw = r.as_euler('xyz', degrees=True) 
+                roll_calc, pitch_calc, yaw_calc = r.as_euler('xyz', degrees=True) 
+                
+            # --- FIDELITY STABILIZATION (FLICKER FIX) ---
+            if abs(abs(roll_calc) - 180.0) < 0.1: roll_calc = 180.0
+            if abs(abs(pitch_calc) - 180.0) < 0.1: pitch_calc = 180.0
+            if abs(abs(yaw_calc) - 180.0) < 0.1: yaw_calc = 180.0
             
+            if abs(roll_calc) < 0.01: roll_calc = 0.0
+            if abs(pitch_calc) < 0.01: pitch_calc = 0.0
+            if abs(yaw_calc) < 0.01: yaw_calc = 0.0
+
+            # 2. Check what is currently entered in fields (User Preference)
+            try:
+                curr_r = parse_float_from_input(self.rpy_inputs['Roll'])
+                curr_p = parse_float_from_input(self.rpy_inputs['Pitch'])
+                curr_y = parse_float_from_input(self.rpy_inputs['Yaw'])
+                
+                # Build matrix from what User entered
+                r_user = R.from_euler('xyz', [curr_r, curr_p, curr_y], degrees=True)
+                matrix_user = r_user.as_matrix()
+                
+                # Compare User matrix with Robot matrix (FK)
+                # Using Frobenius norm of matrix difference
+                diff = np.linalg.norm(matrix[:3, :3] - matrix_user)
+                
+                # If difference is negligible (< 0.1 i.e. very close),
+                # it means orientation is the SAME, just representation differs.
+                # Then DO NOT OVERWRITE fields to avoid annoying user (maintain 0,-90,180)
+                if diff < 0.1:
+                    # Update ONLY TCP labels (read-only), leave Inputs
+                    if self.tcp_value_labels:
+                        self.tcp_value_labels["A"].setText(f"{roll_calc:.1f}")
+                        self.tcp_value_labels["B"].setText(f"{pitch_calc:.1f}")
+                        self.tcp_value_labels["C"].setText(f"{yaw_calc:.1f}")
+                    return 
+
+            except Exception:
+                pass
+
+            # 3. If difference is large (robot physically elsewhere), overwrite fields
             for inp in self.rpy_inputs.values(): inp.blockSignals(True)
-            self.rpy_inputs['Roll'].setText(f"{roll:.2f}")
-            self.rpy_inputs['Pitch'].setText(f"{pitch:.2f}")
-            self.rpy_inputs['Yaw'].setText(f"{yaw:.2f}")
+            self.rpy_inputs['Roll'].setText(f"{roll_calc:.2f}")
+            self.rpy_inputs['Pitch'].setText(f"{pitch_calc:.2f}")
+            self.rpy_inputs['Yaw'].setText(f"{yaw_calc:.2f}")
             
             if self.tcp_value_labels:
-                self.tcp_value_labels["A"].setText(f"{roll:.1f}")
-                self.tcp_value_labels["B"].setText(f"{pitch:.1f}")
-                self.tcp_value_labels["C"].setText(f"{yaw:.1f}")
+                self.tcp_value_labels["A"].setText(f"{roll_calc:.1f}")
+                self.tcp_value_labels["B"].setText(f"{pitch_calc:.1f}")
+                self.tcp_value_labels["C"].setText(f"{yaw_calc:.1f}")
                 
         except Exception: pass
         finally:
@@ -1837,8 +1876,8 @@ class MainWindow(QtWidgets.QWidget):
         self.update_rpy_inputs_from_matrix(fk_matrix)
         pos_robota_m = fk_matrix[:3, 3]
         
-        X_user_m = -pos_robota_m[1]
-        Y_user_m =  pos_robota_m[0]
+        X_user_m =  pos_robota_m[0]
+        Y_user_m =  pos_robota_m[1]
         Z_user_m =  pos_robota_m[2]
             
         for inp in self.xyz_inputs.values(): inp.blockSignals(True)
@@ -1944,20 +1983,20 @@ class MainWindow(QtWidgets.QWidget):
 
     def on_tool_change_click(self):
         """Displays graphical tool selection dialog."""
-        # Tworzymy instancję dialogu
+        # Create dialog instance
         dlg = ToolSelectionDialog(self)
         
-        # Centrujemy okno względem głównego okna aplikacji
-        # (Oblicza środek rodzica i odejmuje połowę rozmiaru dialogu)
+        # Center window relative to main application window
+        # (Calculates parent center and subtracts half of dialog size)
         geo = self.geometry()
         x = geo.x() + (geo.width() - dlg.width()) // 2
         y = geo.y() + (geo.height() - dlg.height()) // 2
         dlg.move(x, y)
 
-        # Połączenie sygnału z dialogu do głównego sygnału zmiany narzędzia
+        # Connect signal from dialog to main tool change signal
         dlg.tool_selected.connect(lambda name: self.change_tool_signal.emit(name))
         
-        # Wyświetl okno
+        # Show window
         dlg.exec_()
 
     def on_stop_click(self):
@@ -1980,54 +2019,54 @@ class MainWindow(QtWidgets.QWidget):
         self.swap_tool_mesh(tool_name)
         self.perform_update_from_sliders()
 
-    # >>> NOWE METODY DLA CHWYTAKÓW <<<
+    # >>> NEW METHODS FOR GRIPPERS <<<
 
     @pyqtSlot()
     def on_pneumatic_click(self):
-        # Przełącz stan (Pneumatyczny: ON/OFF)
+        # Toggle state (Pneumatic: ON/OFF)
         self.pneumatic_active = not self.pneumatic_active
         
         if self.pneumatic_active:
-            # STAN: WŁĄCZONY (Zassanie)
+            # STATE: ON (Suction)
             self.pneumatic_btn.setText("VACUUM: ON")
             if HAS_QTA:
-                # Ikona pełnego kółka / celu (symbolizuje zassanie)
+                # Full circle / target icon (symbolizes suction)
                 self.pneumatic_btn.setIcon(qta.icon("fa5s.dot-circle", color='white'))
             
-            # >>> WYSYŁANIE KOMENDY VGripON <<<
+            # >>> SENDING VGripON COMMAND <<<
             self.request_gripper_signal.emit("VGripON")
         else:
-            # STAN: WYŁĄCZONY (Luz)
+            # STATE: OFF (Idle)
             self.pneumatic_btn.setText("VACUUM: OFF")
             if HAS_QTA:
-                # Ikona pustego kółka
+                # Empty circle icon
                 self.pneumatic_btn.setIcon(qta.icon("fa5s.circle", color='white'))
             
-            # >>> WYSYŁANIE KOMENDY VGripOFF <<<
+            # >>> SENDING VGripOFF COMMAND <<<
             self.request_gripper_signal.emit("VGripOFF")
 
     @pyqtSlot()
     def on_electric_click(self):
-        # Przełącz stan (Elektryczny: CLOSE/OPEN)
+        # Toggle state (Electric: CLOSE/OPEN)
         self.electric_active = not self.electric_active 
         
         if self.electric_active:
-            # STAN: ZAMKNIĘTY (Chwycenie)
+            # STATE: CLOSED (Grip)
             self.electric_btn.setText("E-GRIP: CLOSE")
             if HAS_QTA:
-                # Ikona zaciśniętej pięści (Kamień)
+                # Clenched fist icon (Rock)
                 self.electric_btn.setIcon(qta.icon("fa5s.hand-rock", color='white'))
             
-            # >>> WYSYŁANIE KOMENDY EGRIP_CLOSE <<<
+            # >>> SENDING EGRIP_CLOSE COMMAND <<<
             self.request_gripper_signal.emit("EGRIP_CLOSE")
         else:
-            # STAN: OTWARTY (Puszczenie)
+            # STATE: OPEN (Release)
             self.electric_btn.setText("E-GRIP: OPEN")
             if HAS_QTA:
-                # Ikona otwartej dłoni (Papier)
+                # Open hand icon (Paper)
                 self.electric_btn.setIcon(qta.icon("fa5s.hand-paper", color='white'))
             
-            # >>> WYSYŁANIE KOMENDY EGRIP_OPEN <<<
+            # >>> SENDING EGRIP_OPEN COMMAND <<<
             self.request_gripper_signal.emit("EGRIP_OPEN")
 
 
@@ -2057,7 +2096,7 @@ class MainWindow(QtWidgets.QWidget):
             else:
                 self.homing_dialog.set_axis_state(joint_index, 'DONE')
         else:
-            # Jeśli nie jesteśmy w trakcie Homing, a uderzono krańcówkę -> to BŁĄD
+            # If not in Homing and limit switch hit -> ERROR
             if is_hit:
                  self.update_status_label(f"LIMIT SWITCH HIT: J{joint_index+1}", "red")
                  self.set_cyclic_error("E5") 
@@ -2067,90 +2106,90 @@ class MainWindow(QtWidgets.QWidget):
 
     def on_diagnostic_tick(self):
         """
-        Ta funkcja jest wywoływana automatycznie co 500ms.
-        Jeśli mamy ustawiony aktywny błąd, wysyłamy go.
+        This function is called automatically every 500ms.
+        If active error set, send it.
         """
         if self.active_cyclic_code:
-            # Używamy Twojej naprawionej funkcji send_diagnostic_code
+            # Using your fixed send_diagnostic_code function
             self.send_diagnostic_code(self.active_cyclic_code)
 
     def set_cyclic_error(self, code):
-        """Włącza cykliczne wysyłanie danego kodu."""
+        """Enables cyclic sending of given code."""
         self.active_cyclic_code = code
-        # Wyślij też od razu pierwszy raz, żeby nie czekać 500ms
+        # Send immediately first time to avoid waiting 500ms
         self.send_diagnostic_code(code)
 
     def clear_cyclic_error(self):
-        """Zatrzymuje cykliczne wysyłanie."""
+        """Stops cyclic sending."""
         self.active_cyclic_code = None
     # ---------------------------------------------------------
-    # POPRAWIONA METODA: WYSYŁANIE KODÓW (Bierze port z GUI)
+    # FIXED METHOD: SENDING CODES (Takes port from GUI)
     # ---------------------------------------------------------
     def send_diagnostic_code(self, code):
         """
-        Wysyła kod błędu (np. E1, W1) do aktywnego portu COM.
-        Pobiera nazwę portu z listy wyboru w GUI.
+        Sends error code (e.g. E1, W1) to active COM port.
+        Gets port name from selection list in GUI.
         """
         if not code: return
         
-        # 1. Pobierz aktualnie wybrany port z listy (np. "COM3")
+        # 1. Get currently selected port from list (e.g. "COM3")
         current_port = self.port_combo.currentText()
         
-        # 2. Sprawdź czy port jest poprawny
+        # 2. Check if port is valid
         if not current_port or current_port == "No ports":
-            print(f"[DIAGNOSTIC SKIPPED] Kod '{code}' nie wysłany - brak wybranego portu.")
+            print(f"[DIAGNOSTIC SKIPPED] Code '{code}' not sent - no port selected.")
             return
 
-        print(f"[DIAGNOSTIC LOG] Wysyłanie '{code}' na port '{current_port}'...")
+        print(f"[DIAGNOSTIC LOG] Sending '{code}' to port '{current_port}'...")
 
         try:
-            # 3. Wywołanie funkcji z dwoma argumentami: (PORT, KOMENDA)
-            # Twoja biblioteka communication wymaga podania portu jako pierwszego argumentu.
+            # 3. Function call with two arguments: (PORT, COMMAND)
+            # Your communication library requires port as first argument.
             if hasattr(comm, 'send_command'):
                 comm.send_command(current_port, code)
             elif hasattr(comm, 'send_message'):
                  comm.send_message(current_port, code)
             else:
-                print("[UART ERROR] Moduł 'comm' nie posiada znanej funkcji wysyłania.")
+                print("[UART ERROR] 'comm' module has no known send function.")
                 
         except Exception as e:
-            # Łapiemy błędy, żeby GUI się nie zamknęło w razie problemów z kablem
-            print(f"[UART EXCEPTION] Błąd podczas wysyłania '{code}': {e}")
+            # Catch errors to prevent GUI close on cable issues
+            print(f"[UART EXCEPTION] Error sending '{code}': {e}")
     # ---------------------------------------------------------
-    # SYNTAX VALIDATOR (NOWA FUNKCJA)
+    # SYNTAX VALIDATOR (NEW FUNCTION)
     # ---------------------------------------------------------
     def validate_program_syntax(self):
-        """Sprawdza składnię w edytorze i podświetla błędne linie na czerwono."""
+        """Checks syntax in editor and highlights error lines in red."""
         text = self.program_editor.toPlainText()
         lines = text.split('\n')
         selections = []
         
-        # Definicje poprawnych wzorców (Regex)
-        # Liczba (całkowita lub float, opcjonalnie z minusem): -?\d+(\.\d+)?
+        # Valid pattern definitions (Regex)
+        # Number (integer or float, optional minus): -?\d+(\.\d+)?
         FLOAT_PTN = r"-?\d+(?:\.\d+)?"
-        # MOVE(x,y,z) lub MOVEL(x,y,z) - dopuszczamy spacje
+        # MOVE(x,y,z) or MOVEL(x,y,z) - spaces allowed
         MOVE_PTN = rf"^(MOVE|MOVEL)\s*\(\s*{FLOAT_PTN}\s*,\s*{FLOAT_PTN}\s*,\s*{FLOAT_PTN}\s*\)$"
         # DELAY(ms)
         DELAY_PTN = rf"^DELAY\s*\(\s*\d+\s*\)$"
         # EGRIP(OPEN) lub EGRIP(CLOSE)
         EGRIP_PTN = r"^EGRIP\s*\(\s*(OPEN|CLOSE)\s*\)$"
-        # Proste komendy
+        # Simple commands
         SIMPLE_CMD = ["MOVESTB", "VACON", "VACOFF"]
 
         for i, line in enumerate(lines):
             line_str = line.strip().upper() # Ignorujemy wielkość liter i spacje na bokach
             
-            # 1. Ignoruj puste linie i komentarze
+            # 1. Ignore empty lines and comments
             if not line_str or line_str.startswith("#"):
                 continue
 
             is_valid = False
             
-            # 2. Sprawdzanie prostych komend
+            # 2. Checking simple commands
             if line_str in SIMPLE_CMD:
                 is_valid = True
             
-            # 3. Sprawdzanie regexów (MOVE, DELAY, itp.)
+            # 3. Checking regexes (MOVE, DELAY, etc.)
             elif re.match(MOVE_PTN, line_str):
                 is_valid = True
             elif re.match(DELAY_PTN, line_str):
@@ -2158,12 +2197,12 @@ class MainWindow(QtWidgets.QWidget):
             elif re.match(EGRIP_PTN, line_str):
                 is_valid = True
 
-            # 4. Jeśli linia jest BŁĘDNA -> dodaj czerwone tło
+            # 4. If line is INVALID -> add red background
             if not is_valid:
                 selection = QtWidgets.QTextEdit.ExtraSelection()
-                selection.format.setBackground(QColor(80, 0, 0)) # Ciemna czerwień tła
-                selection.format.setUnderlineStyle(QtGui.QTextCharFormat.WaveUnderline) # Falowane podkreślenie
-                selection.format.setUnderlineColor(QColor(255, 0, 0)) # Jasna czerwień kreski
+                selection.format.setBackground(QColor(80, 0, 0)) # Dark red background
+                selection.format.setUnderlineStyle(QtGui.QTextCharFormat.WaveUnderline) # Wavy underline
+                selection.format.setUnderlineColor(QColor(255, 0, 0)) # Light red stroke
                 selection.format.setProperty(QTextFormat.FullWidthSelection, True)
                 
                 cursor = self.program_editor.textCursor()
@@ -2172,7 +2211,7 @@ class MainWindow(QtWidgets.QWidget):
                 selection.cursor = cursor
                 selections.append(selection)
 
-        # Zastosuj zaznaczenia (to nie usuwa tekstu, tylko zmienia jego formatowanie)
+        # Apply selections (doesn't remove text, only changes formatting)
         self.program_editor.setExtraSelections(selections)
 
     @pyqtSlot()

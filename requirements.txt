@@ -1,3 +1,9 @@
-ikpy
-pyqt6
 numpy
+scipy
+trimesh
+PyQt5
+pyqtgraph
+PyOpenGL
+ikpy
+pyserial
+qtawesome

@@ -31,21 +31,20 @@ class RobotKinematics:
         self.tool_rotation_matrix = np.eye(3) 
         self.current_tool = "NONE"
 
-        # Zero World Offset - using pure tool calibration instead
+        # Zero World Offset 
         self.world_offset = np.array([0.0, 0.0, 0.0]) 
 
         try:
             print(f"[IK] Loading URDF: {urdf_path}")
             
-            # Robust Path Logic
             import os
             final_path = urdf_path
             if not os.path.exists(final_path):
-                # Try relative to parent if simple relative path failed
+          
                 candidate = os.path.join(os.path.dirname(os.path.dirname(__file__)), urdf_path)
                 if os.path.exists(candidate):
                     final_path = candidate
-                # Try relative to current working directory if script ran from there
+             
                 elif os.path.exists(os.path.join("..", urdf_path)):
                      final_path = os.path.join("..", urdf_path)
             
@@ -56,7 +55,7 @@ class RobotKinematics:
                 warnings.simplefilter("ignore", UserWarning)
                 self.chain = Chain.from_urdf_file(final_path)
             
-            # Automatyczna maska (fallback logic matching User's code)
+     
             mask = []
             for link in self.chain.links:
                 if link.joint_type == 'fixed':
@@ -67,14 +66,12 @@ class RobotKinematics:
             self.chain.active_links_mask = mask
             self.active_links_mask = mask
             
-            # === ZWIĘKSZONA PRECYZJA (Optimized for CPU) ===
             self.chain.max_iterations = 50
             self.chain.convergence_limit = 1e-4
             
             self.joint_limits_rad = self._load_active_joint_limits()
             self.visual_origins = self._load_visual_origins(urdf_path)
             
-            # Default to Small Gripper as per previous behavior/logic
             self.set_tool("CHWYTAK_MALY")
             
             print(f"[IK] Ready. Mask: {mask}")
@@ -96,7 +93,7 @@ class RobotKinematics:
         self.current_tool = tool_name
         print(f"[IK] Tool Set: {tool_name} -> Offset: {self.tool_translation}")
 
-    # ================= KINEMATICS ENGINE (UPDATED) =================
+    # ================= KINEMATICS ENGINE  =================
 
     def forward_kinematics(self, active_angles):
         """Returns 4x4 TCP Matrix (including tool offset)."""
@@ -106,7 +103,6 @@ class RobotKinematics:
         R_flange = flange_matrix[:3, :3]
         P_flange = flange_matrix[:3, 3]
         
-        # P_tcp = P_flange + (R_flange * Offset) + WorldOffset
         offset_global = R_flange @ self.tool_translation
         P_tcp = P_flange + offset_global + self.world_offset
         
@@ -124,22 +120,20 @@ class RobotKinematics:
         """
         if initial_guess is None: initial_guess = np.zeros(6)
         
-        # Revert World Offset before solving in URDF frame
+
         target_raw = target_position - self.world_offset
         
         # 1. Determine Flange Orientation
-        # R_tcp = R_flange * R_tool  =>  R_flange = R_tcp * inv(R_tool)
         target_rot_matrix = target_orientation 
         flange_rot_matrix = target_rot_matrix @ np.linalg.inv(self.tool_rotation_matrix)
         
         # 2. Determine Flange Position
-        # P_tcp = P_flange + (R_flange * Offset)  =>  P_flange = P_tcp - (R_flange * Offset)
         offset_global = flange_rot_matrix @ self.tool_translation
         target_pos_flange = target_raw - offset_global
         
         full_guess = self._active_to_full(initial_guess)
         
-        # 3. Solver IKPy
+        # 3. Solver 
         full_sol = self.chain.inverse_kinematics(
             target_position=target_pos_flange,
             target_orientation=flange_rot_matrix, 
@@ -149,11 +143,10 @@ class RobotKinematics:
         
         return self._full_to_active(full_sol)
 
-    # ================= HELPERS (Updated to match Terminal logic) =================
+    # ================= HELPERS  =================
 
     def _active_to_full(self, active_joints):
         arr = np.array(active_joints, dtype=float).flatten()
-        # Handle cases where input might be [0, J1, J2...] or just [J1, J2...]
         if len(arr) == 7: arr = arr[1:] 
         if len(arr) != 6: arr = np.resize(arr, 6)
         

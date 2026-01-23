@@ -9,10 +9,6 @@ from PyQt5.QtGui import QMatrix4x4, QVector4D, QVector3D, QColor
 import pyqtgraph.opengl as gl
 from scipy.spatial.transform import Rotation as R
 
-# ---------------------------------------------------------
-# Path Setup to allow importing modules from parent directory
-# assuming this script is in PAROL6_GUI/robot/
-# ---------------------------------------------------------
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
@@ -35,15 +31,13 @@ class SimulationWindow(QtWidgets.QWidget):
         
         # 1. Initialize Kinematics
         try:
-            # We assume config.URDF_PATH is correct relative to execution dir
-            # If running from robot/, we might need to adjust, but let's try standard first
+
             self.kinematics = RobotKinematics(config.URDF_PATH, None)
             self.joint_limits = self.kinematics.get_joint_limits()
             self.visual_origins = self.kinematics.get_visual_origins()
             print("[SIM] Kinematics initialized.")
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, "Init Error", f"Failed to initialize kinematics:\n{e}")
-            # Non-fatal if just visualizing stls, but sliders won't work well
             self.joint_limits = [(-np.pi, np.pi)] * 6
             self.visual_origins = {}
 
@@ -89,7 +83,6 @@ class SimulationWindow(QtWidgets.QWidget):
             
             slider = QtWidgets.QSlider(Qt.Horizontal)
             slider.setRange(config.SLIDER_RANGE_MIN, config.SLIDER_RANGE_MAX)
-            # Default to center (0 degrees if limits valid)
             mid = (config.SLIDER_RANGE_MAX + config.SLIDER_RANGE_MIN) // 2
             slider.setValue(mid)
             slider.valueChanged.connect(self.on_slider_changed)

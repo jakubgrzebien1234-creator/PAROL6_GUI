@@ -6,7 +6,7 @@ import re
 
 # === CONFIGURATION ===
 MAIN_LOOP_TIMER_MS = 20 
-LINEAR_SPEED_M_S = 0.3  # Base speed at 100%
+LINEAR_SPEED_M_S = 0.3  
 
 # === WORKSPACE LIMITS (mm) ===
 LIMIT_X = (-500.0, 600.0)
@@ -51,7 +51,6 @@ class RobotWorker(QObject):
         self.is_moving = False
         self.is_program_waiting_for_move = False
         
-        # Default speed 50%
         self.speed_multiplier = 0.5
         
         self.main_loop_timer = QTimer(self)
@@ -67,7 +66,6 @@ class RobotWorker(QObject):
     def set_speed_multiplier(self, multiplier):
         """Sets speed multiplier (0.1 - 1.0)."""
         self.speed_multiplier = multiplier
-        # print(f"[WORKER] Speed: {self.speed_multiplier * 100:.0f}%")
 
     @pyqtSlot(str)
     def change_active_tool(self, tool_name):
@@ -112,7 +110,7 @@ class RobotWorker(QObject):
         check_fk = self.kinematics.forward_kinematics(calculated_angles)
         dist_error = np.linalg.norm(check_fk[:3, 3] - target_matrix[:3, 3])
         
-        if dist_error > 0.01: # 1cm tolerance
+        if dist_error > 0.01: 
             self._check_and_report_error("Unreachable Position (IK)")
             return False
             
@@ -217,10 +215,8 @@ class RobotWorker(QObject):
         try:
             angles = self.trajectory_queue[self.trajectory_index]
             
-            # Handle old tuple format if present
             if isinstance(angles, tuple): angles = angles[0]
 
-            # Padding
             angles_to_send = angles
             if len(angles) == 6:
                 angles_to_send = np.concatenate(([0.0], angles))
@@ -305,7 +301,6 @@ class RobotWorker(QObject):
         if port_name != "No ports":
             try:
                 comm.open_serial_port(port_name)
-                # self.start_move(self.previous_angles) # Optional refresh
             except Exception:
                 self.current_port = None
 
@@ -331,14 +326,10 @@ class RobotWorker(QObject):
 
         if not line: return
         
-        # WAŻNE: Usuwamy białe znaki końca linii (\r\n), żeby parsowanie było łatwiejsze
         line = line.strip() 
         if not line: return
         
-        # --- DEBUGOWANIE ---
-        # print(f"[WORKER RAW UART] {line}") 
-        
-        # 1. ESTOP (Priorytet)
+        # 1. ESTOP 
         if "ESTOP_TRIGGER" in line:
             self.estop_status_signal.emit(True)
             self.stop_program()
@@ -348,7 +339,7 @@ class RobotWorker(QObject):
             self.estop_status_signal.emit(False)
             self.status_updated.emit("ESTOP RELEASED", "green")
             
-        # 2. Status krańcówek (Legacy $H/$R)
+        # 2. LIMIT SWITCHES
         elif line.startswith("$H"):
             try: self.limit_switch_status.emit(int(line[2])-1, True)
             except: pass
@@ -356,14 +347,12 @@ class RobotWorker(QObject):
             try: self.limit_switch_status.emit(int(line[2])-1, False)
             except: pass
             
-        # 3. Zakończenie bazowania
+        # 3. HOMING COMPLETE
         elif "HOMING_COMPLETE" in line:
             self.status_updated.emit("HOMING_COMPLETE_OK", "green")
             
-        # 4. PRZEPUSZCZANIE INNYCH WIADOMOŚCI (Fix dla H1, R1, POS, etc.)
+        # 4. PASSING OTHER MESSAGES
         else:
-            # Emituj wszystko inne do GUI, żeby funkcja update_status_label mogła to sparsować
-            # Np. "H1", "R1", "Error: X"
             self.status_updated.emit(line, "white")
 
     # -----------------------------------------------------------------
@@ -486,12 +475,10 @@ class RobotWorker(QObject):
         pos_m = self._convert_user_coords_to_robot(x, y, z)
         start_tf = self.kinematics.forward_kinematics(self.get_previous_angles())
         target_tf = np.eye(4)
-        target_tf[:3, :3] = start_tf[:3, :3] # Keep orientation
-        target_tf[:3, 3] = pos_m
+        target_tf[:3, :3] = start_tf[:3, :3] 
         return target_tf
 
     def _convert_user_coords_to_robot(self, X_u, Y_u, Z_u):
-        # Direct Frame: X user -> X robot, Y user -> Y robot
         return np.array([X_u/1000.0, Y_u/1000.0, Z_u/1000.0])
 
     def _robot_coords_to_user(self, robot_pos_m):
